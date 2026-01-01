@@ -17,3 +17,38 @@ services:
       - 6881:6881
       - 6881:6881/udp
     restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Africa/Johannesburg
+    volumes:
+      - ./radarr/config:/config
+      - ./downloads:/downloads
+      - /mnt/media/Movies:/movies
+    ports:
+      - 7878:7878
+    depends_on:
+      - qbittorrent
+    restart: unless-stopped
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Africa/Johannesburg
+    volumes:
+      - ./bazarr/config:/config
+      - ./downloads:/downloads
+      - /mnt/media/Movies:/movies
+      - /mnt/media/Series:/tv
+    ports:
+      - 6767:6767
+    depends_on:
+      - radarr
+    restart: unless-stopped
