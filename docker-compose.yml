@@ -52,3 +52,16 @@ services:
     depends_on:
       - radarr
     restart: unless-stopped
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Africa/Johannesburg
+    volumes:
+      - ./jellyseerr/config:/app/config
+    ports:
+      - 5055:5055
+    restart: unless-stopped
