@@ -5,8 +5,8 @@ services:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=122
+      - PGID=124
       - TZ=Africa/Johannesburg
       - WEBUI_PORT=8080
     volumes:
@@ -22,8 +22,8 @@ services:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=122
+      - PGID=124
       - TZ=Africa/Johannesburg
     volumes:
       - ./radarr/config:/config
@@ -39,8 +39,8 @@ services:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=122
+      - PGID=124
       - TZ=Africa/Johannesburg
     volumes:
       - ./bazarr/config:/config
@@ -57,8 +57,8 @@ services:
     image: fallenbagel/jellyseerr:latest
     container_name: jellyseerr
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=122
+      - PGID=124
       - TZ=Africa/Johannesburg
     volumes:
       - ./jellyseerr/config:/app/config
@@ -70,8 +70,8 @@ services:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=122
+      - PGID=124
       - TZ=Africa/Johannesburg
     volumes:
       - ./prowlarr/config:/config
@@ -83,8 +83,8 @@ services:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     environment:
-      - PUID=1000
-      - PGID=1000
+      - PUID=122
+      - PGID=124
       - TZ=Africa/Johannesburg
     volumes:
       - ./sonarr/config:/config
