@@ -1,0 +1,7 @@
+# Config directories (contain secrets/API keys)
+*/config/
+downloads/
+
+# OS
+.DS_Store
+*.swp

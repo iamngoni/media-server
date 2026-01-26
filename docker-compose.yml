@@ -1,7 +1,65 @@
 services:
+  # ── Reverse Proxy ──────────────────────────────────────
+  traefik:
+    image: traefik:v3.3
+    container_name: traefik
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+    ports:
+      - 80:80
+      - 8280:8080  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+  # ── Media Server ───────────────────────────────────────
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID=122
+      - PGID=124
+      - TZ=Africa/Johannesburg
+    volumes:
+      - ./jellyfin/config:/config
+      - /mnt/media/Movies:/mnt/media/Movies
+      - /mnt/media/Series:/mnt/media/Series
+      - /mnt/media/Anime:/mnt/media/Anime
+      - /mnt/media/Animations:/mnt/media/Animations
+    ports:
+      - 8096:8096
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.jellyfin.rule=Host(`jellyfin.homelab.local`)
+      - traefik.http.services.jellyfin.loadbalancer.server.port=8096
+    restart: unless-stopped
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    environment:
+      - PUID=122
+      - PGID=124
+      - TZ=Africa/Johannesburg
+    volumes:
+      - ./jellyseerr/config:/app/config
+    ports:
+      - 5055:5055
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.jellyseerr.rule=Host(`jellyseerr.homelab.local`)
+      - traefik.http.services.jellyseerr.loadbalancer.server.port=5055
+    restart: unless-stopped
+
+  # ── Download Stack ─────────────────────────────────────
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
+    network_mode: host
     environment:
       - PUID=122
       - PGID=124
@@ -10,10 +68,56 @@ services:
     volumes:
       - ./qbittorrent/config:/config
       - ./downloads:/downloads
+    restart: unless-stopped
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=122
+      - PGID=124
+      - TZ=Africa/Johannesburg
+    volumes:
+      - ./prowlarr/config:/config
     ports:
-      - 8080:8080
-      - 6881:6881
-      - 6881:6881/udp
+      - 9696:9696
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.homelab.local`)
+      - traefik.http.services.prowlarr.loadbalancer.server.port=9696
+    restart: unless-stopped
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    environment:
+      - TZ=Africa/Johannesburg
+      - LOG_LEVEL=info
+    ports:
+      - 8191:8191
+    restart: unless-stopped
+
+  # ── Media Management (Arr Stack) ──────────────────────
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=122
+      - PGID=124
+      - TZ=Africa/Johannesburg
+    volumes:
+      - ./sonarr/config:/config
+      - ./downloads:/downloads
+      - /mnt/media/Series:/tv
+      - /mnt/media/Anime:/anime
+    ports:
+      - 8989:8989
+    depends_on:
+      - qbittorrent
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.sonarr.rule=Host(`sonarr.homelab.local`)
+      - traefik.http.services.sonarr.loadbalancer.server.port=8989
     restart: unless-stopped
 
   radarr:
@@ -31,6 +135,31 @@ services:
       - 7878:7878
     depends_on:
       - qbittorrent
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.radarr.rule=Host(`radarr.homelab.local`)
+      - traefik.http.services.radarr.loadbalancer.server.port=7878
+    restart: unless-stopped
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    environment:
+      - PUID=122
+      - PGID=124
+      - TZ=Africa/Johannesburg
+    volumes:
+      - ./lidarr/config:/config
+      - ./downloads:/downloads
+      - /mnt/media/Music:/music
+    ports:
+      - 8686:8686
+    depends_on:
+      - qbittorrent
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.lidarr.rule=Host(`lidarr.homelab.local`)
+      - traefik.http.services.lidarr.loadbalancer.server.port=8686
     restart: unless-stopped
 
   bazarr:
@@ -49,48 +178,92 @@ services:
       - 6767:6767
     depends_on:
       - radarr
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.bazarr.rule=Host(`bazarr.homelab.local`)
+      - traefik.http.services.bazarr.loadbalancer.server.port=6767
     restart: unless-stopped
 
-  jellyseerr:
-    image: fallenbagel/jellyseerr:latest
-    container_name: jellyseerr
+  # ── Automation & Maintenance ───────────────────────────
+  recyclarr:
+    image: ghcr.io/recyclarr/recyclarr:latest
+    container_name: recyclarr
     environment:
-      - PUID=122
-      - PGID=124
       - TZ=Africa/Johannesburg
     volumes:
-      - ./jellyseerr/config:/app/config
-    ports:
-      - 5055:5055
+      - ./recyclarr/config:/config
     restart: unless-stopped
 
-  prowlarr:
-    image: lscr.io/linuxserver/prowlarr:latest
-    container_name: prowlarr
+  unpackerr:
+    image: golift/unpackerr:latest
+    container_name: unpackerr
     environment:
-      - PUID=122
-      - PGID=124
       - TZ=Africa/Johannesburg
+      - UN_SONARR_0_URL=http://sonarr:8989
+      - UN_SONARR_0_API_KEY=f679bfcb53dc43c392abe4fb70f4e75f
+      - UN_RADARR_0_URL=http://radarr:7878
+      - UN_RADARR_0_API_KEY=8ff6bbce0b6648e0a715edfa68fa262a
+      - UN_LIDARR_0_URL=http://lidarr:8686
+      - UN_LIDARR_0_API_KEY=changeme
     volumes:
-      - ./prowlarr/config:/config
-    ports:
-      - 9696:9696
-    restart: unless-stopped
-
-  sonarr:
-    image: lscr.io/linuxserver/sonarr:latest
-    container_name: sonarr
-    environment:
-      - PUID=122
-      - PGID=124
-      - TZ=Africa/Johannesburg
-    volumes:
-      - ./sonarr/config:/config
       - ./downloads:/downloads
-      - /mnt/media/Series:/tv
-      - /mnt/media/Anime:/anime
+    restart: unless-stopped
+
+  notifiarr:
+    image: golift/notifiarr:latest
+    container_name: notifiarr
+    environment:
+      - TZ=Africa/Johannesburg
+      - DN_API_KEY=changeme
+    volumes:
+      - ./notifiarr/config:/config
+      - /var/run/utmp:/var/run/utmp
     ports:
-      - 8989:8989
-    depends_on:
-      - qbittorrent
+      - 5454:5454
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.notifiarr.rule=Host(`notifiarr.homelab.local`)
+      - traefik.http.services.notifiarr.loadbalancer.server.port=5454
+    restart: unless-stopped
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    environment:
+      - TZ=Africa/Johannesburg
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_SCHEDULE=0 0 4 * * *
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+  # ── Smart Home ─────────────────────────────────────────
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    environment:
+      - TZ=Africa/Johannesburg
+    volumes:
+      - ./homeassistant/config:/config
+    network_mode: host
+    restart: unless-stopped
+
+  # ── Dashboard ──────────────────────────────────────────
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    environment:
+      - PUID=122
+      - PGID=124
+      - TZ=Africa/Johannesburg
+      - HOMEPAGE_ALLOWED_HOSTS=192.168.1.129:3000,100.78.244.68:3000,localhost:3000
+    volumes:
+      - ./homepage/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - 3000:3000
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.homepage.rule=Host(`home.homelab.local`)
+      - traefik.http.services.homepage.loadbalancer.server.port=3000
     restart: unless-stopped
