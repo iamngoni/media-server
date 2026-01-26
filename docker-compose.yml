@@ -267,3 +267,24 @@ services:
       - traefik.http.routers.homepage.rule=Host(`home.homelab.local`)
       - traefik.http.services.homepage.loadbalancer.server.port=3000
     restart: unless-stopped
+
+  # ── Monitoring ─────────────────────────────────────────
+  speedtest-tracker:
+    image: lscr.io/linuxserver/speedtest-tracker:latest
+    container_name: speedtest-tracker
+    environment:
+      - PUID=122
+      - PGID=124
+      - TZ=Africa/Johannesburg
+      - APP_KEY=base64:HOfZl9tZPt1sTUYYmORquGDSif5WgxyB89lAhpLtH/k=
+      - DB_CONNECTION=sqlite
+      - SPEEDTEST_SCHEDULE=0 */3 * * *
+    volumes:
+      - ./speedtest-tracker/config:/config
+    ports:
+      - 8765:80
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.speedtest.rule=Host(`speedtest.homelab.local`)
+      - traefik.http.services.speedtest.loadbalancer.server.port=80
+    restart: unless-stopped
