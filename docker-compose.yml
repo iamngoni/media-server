@@ -30,6 +30,7 @@ services:
       - /mnt/media/Series:/mnt/media/Series
       - /mnt/media/Anime:/mnt/media/Anime
       - /mnt/media/Animations:/mnt/media/Animations
+      - /mnt/media/Music:/mnt/media/Music
     ports:
       - 8096:8096
     labels:
@@ -198,13 +199,13 @@ services:
     image: golift/unpackerr:latest
     container_name: unpackerr
     environment:
-      - TZ=Africa/Johannesburg
+      - TZ=${TZ}
       - UN_SONARR_0_URL=http://sonarr:8989
-      - UN_SONARR_0_API_KEY=f679bfcb53dc43c392abe4fb70f4e75f
+      - UN_SONARR_0_API_KEY=${UN_SONARR_API_KEY}
       - UN_RADARR_0_URL=http://radarr:7878
-      - UN_RADARR_0_API_KEY=8ff6bbce0b6648e0a715edfa68fa262a
+      - UN_RADARR_0_API_KEY=${UN_RADARR_API_KEY}
       - UN_LIDARR_0_URL=http://lidarr:8686
-      - UN_LIDARR_0_API_KEY=changeme
+      - UN_LIDARR_0_API_KEY=${UN_LIDARR_API_KEY}
     volumes:
       - ./downloads:/downloads
     restart: unless-stopped
@@ -213,8 +214,8 @@ services:
     image: golift/notifiarr:latest
     container_name: notifiarr
     environment:
-      - TZ=Africa/Johannesburg
-      - DN_API_KEY=changeme
+      - TZ=${TZ}
+      - DN_API_KEY=${NOTIFIARR_API_KEY}
     volumes:
       - ./notifiarr/config:/config
       - /var/run/utmp:/var/run/utmp
@@ -273,10 +274,10 @@ services:
     image: lscr.io/linuxserver/speedtest-tracker:latest
     container_name: speedtest-tracker
     environment:
-      - PUID=122
-      - PGID=124
-      - TZ=Africa/Johannesburg
-      - APP_KEY=base64:HOfZl9tZPt1sTUYYmORquGDSif5WgxyB89lAhpLtH/k=
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - APP_KEY=${SPEEDTEST_APP_KEY}
       - DB_CONNECTION=sqlite
       - SPEEDTEST_SCHEDULE=0 */3 * * *
     volumes:
