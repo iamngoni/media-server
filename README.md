@@ -26,9 +26,28 @@ Docker-based media server stack running on Ubuntu.
 ## Setup
 
 1. Clone this repo to your home directory
-2. Copy/restore config directories for each service
-3. Create media mount at `/mnt/media/` with subdirs: Movies, Series, Anime, Animations, Music
-4. `docker compose up -d`
+2. Copy `.env.example` to `.env` and fill in your values:
+   ```bash
+   cp .env.example .env
+   nano .env
+   ```
+3. Copy/restore config directories for each service
+4. Create media mount at `/mnt/media/` with subdirs: Movies, Series, Anime, Animations, Music
+5. `docker compose up -d`
+
+## Environment Variables
+
+Sensitive keys are stored in `.env` (gitignored). See `.env.example` for required variables:
+
+| Variable | Service | Description |
+|----------|---------|-------------|
+| `PUID` / `PGID` | All | User/Group ID for file permissions |
+| `TZ` | All | Timezone |
+| `UN_SONARR_API_KEY` | Unpackerr | Sonarr API key |
+| `UN_RADARR_API_KEY` | Unpackerr | Radarr API key |
+| `UN_LIDARR_API_KEY` | Unpackerr | Lidarr API key |
+| `NOTIFIARR_API_KEY` | Notifiarr | Notifiarr API key |
+| `SPEEDTEST_APP_KEY` | Speedtest | Laravel app key (generate with `openssl rand -base64 32`) |
 
 ## Traefik Routes
 
