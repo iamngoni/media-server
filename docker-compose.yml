@@ -40,7 +40,8 @@ services:
     restart: unless-stopped
 
   jellyseerr:
-    image: fallenbagel/jellyseerr:latest
+    # image: fallenbagel/jellyseerr:latest  # original - revert when seerr officially supports music
+    image: seerr-music:latest  # local fork with Lidarr/music support (PR #2132)
     container_name: jellyseerr
     environment:
       - PUID=122
@@ -69,6 +70,18 @@ services:
     volumes:
       - ./qbittorrent/config:/config
       - ./downloads:/downloads
+    restart: unless-stopped
+
+  metube:
+    image: ghcr.io/alexta69/metube
+    container_name: metube
+    environment:
+      - UID=1000
+      - GID=1000
+    volumes:
+      - /home/iamngoni/downloads:/downloads
+    ports:
+      - 8081:8081
     restart: unless-stopped
 
   prowlarr:
