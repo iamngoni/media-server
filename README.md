@@ -7,16 +7,17 @@ Docker-based media server stack running on Ubuntu.
 | Service | Port | Description |
 |---------|------|-------------|
 | **Jellyfin** | 8096 | Media streaming server |
-| **Jellyseerr** | 5055 | Media request management |
+| **Seerr** | 5055 | Media request management (local fork with music/Lidarr support) |
 | **Sonarr** | 8989 | TV series management |
 | **Radarr** | 7878 | Movie management |
 | **Lidarr** | 8686 | Music management |
 | **Bazarr** | 6767 | Subtitle management |
 | **Prowlarr** | 9696 | Indexer management |
 | **qBittorrent** | 8080 | Torrent client (host network) |
+| **MeTube** | 8081 | YouTube downloader (yt-dlp web UI) |
 | **FlareSolverr** | 8191 | CloudFlare bypass proxy |
 | **Traefik** | 80/8280 | Reverse proxy + dashboard |
-| **Homepage** | 3000 | Dashboard |
+| **Speedtest Tracker** | 8765 | Periodic speed tests |
 | **Home Assistant** | 8123 | Smart home (host network) |
 | **Watchtower** | — | Auto-update containers |
 | **Unpackerr** | — | Auto-extract downloads |
@@ -92,3 +93,15 @@ If migrating from a **native Jellyfin install** (where data dir was `/var/lib/je
 - Config directories are gitignored (contain API keys)
 - DNS fix: `/etc/systemd/resolved.conf.d/fallback-dns.conf` with Google/Cloudflare DNS for reliable Docker pulls
 - Docker daemon config: `/etc/docker/daemon.json` with DNS `[8.8.8.8, 8.8.4.4, 1.1.1.1]` for container DNS
+- MeTube downloads to `/home/iamngoni/downloads` — manually move files to appropriate media folders
+
+## Seerr (Jellyseerr Fork with Music Support)
+
+Running a local fork of [seerr-team/seerr](https://github.com/seerr-team/seerr) with [PR #2132](https://github.com/seerr-team/seerr/pull/2132) merged for Lidarr/music support.
+
+- **Fork repo:** [iamngoni/seerr](https://github.com/iamngoni/seerr)
+- **Image:** `seerr-music:latest` (built locally)
+- **Build:** `cd ~/seerr-fork && sudo docker build --build-arg COMMIT_TAG=local -t seerr-music:latest .`
+- **Config perms:** `sudo chown -R 1000:1000 ./jellyseerr/config`
+
+When official Seerr merges music support, revert to `fallenbagel/jellyseerr:latest` in docker-compose.yml.
