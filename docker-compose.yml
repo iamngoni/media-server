@@ -84,6 +84,20 @@ services:
       - 8081:8081
     restart: unless-stopped
 
+  jdownloader:
+    image: jlesage/jdownloader-2
+    container_name: jdownloader
+    environment:
+      - USER_ID=1000
+      - GROUP_ID=1000
+      - TZ=Africa/Johannesburg
+    volumes:
+      - ./jdownloader/config:/config
+      - /home/iamngoni/downloads:/output
+    ports:
+      - 5800:5800  # Web UI
+    restart: unless-stopped
+
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
