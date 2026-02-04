@@ -1,0 +1,4 @@
+# Backup files (too large for git)
+*.tar.gz
+*.zip
+!.gitignore
