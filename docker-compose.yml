@@ -349,3 +349,20 @@ services:
       - traefik.http.routers.speedtest.rule=Host(`speedtest.homelab.local`)
       - traefik.http.services.speedtest.loadbalancer.server.port=80
     restart: unless-stopped
+
+  kompressor:
+    image: kompressor:latest
+    container_name: kompressor
+    ports:
+      - "8078:8078"
+    volumes:
+      - /home/iamngoni/kompressor/data:/app/data
+      - /tmp/kompressor:/app/temp
+      - /mnt/media/Movies:/media/Movies
+      - /mnt/media/Series:/media/Series
+      - /mnt/media/Anime:/media/Anime
+      - /home/iamngoni/kompressor/config.docker.toml:/app/config.toml:ro
+      - /home/iamngoni/kompressor/templates:/app/templates:ro
+    environment:
+      - RUST_LOG=info
+    restart: unless-stopped
