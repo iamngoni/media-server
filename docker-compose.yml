@@ -349,3 +349,19 @@ services:
     environment:
       - RUST_LOG=info
     restart: unless-stopped
+
+  # ── Homelab Dashboard ──────────────────────────────────
+  nexus:
+    image: nexus:latest
+    container_name: nexus
+    network_mode: host
+    volumes:
+      - /mnt/media:/mnt/media:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/clawdbot:/tmp/clawdbot:ro
+      - /home/iamngoni/.openclaw/logs:/var/log/openclaw:ro
+    env_file:
+      - /home/iamngoni/nexus/.env
+    environment:
+      - RUST_LOG=info
+    restart: unless-stopped
