@@ -213,39 +213,6 @@ services:
     restart: unless-stopped
 
   # ── Transcoding ─────────────────────────────────────────
-  tdarr:
-    image: ghcr.io/haveagitgat/tdarr:latest
-    container_name: tdarr
-    environment:
-      - PUID=122
-      - PGID=124
-      - TZ=Africa/Johannesburg
-      - UMASK_SET=002
-      - serverIP=0.0.0.0
-      - serverPort=8266
-      - webUIPort=8265
-      - internalNode=true
-      - inContainer=true
-      - ffmpegVersion=6
-      - nodeName=MainNode
-    volumes:
-      - ./tdarr/server:/app/server
-      - ./tdarr/configs:/app/configs
-      - ./tdarr/logs:/app/logs
-      - ./tdarr/transcode_cache:/temp
-      - /mnt/media/Movies:/media/movies
-      - /mnt/media/Series:/media/series
-      - /mnt/media/Anime:/media/anime
-    ports:
-      - 8265:8265  # WebUI
-      - 8266:8266  # Server
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.tdarr.rule=Host(`tdarr.homelab.local`)
-      - traefik.http.services.tdarr.loadbalancer.server.port=8265
-    restart: unless-stopped
-
-  # ── Automation & Maintenance ───────────────────────────
   recyclarr:
     image: ghcr.io/recyclarr/recyclarr:latest
     container_name: recyclarr
