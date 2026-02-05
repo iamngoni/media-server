@@ -305,7 +305,7 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - APP_KEY=${SPEEDTEST_APP_KEY}
+      - APP_KEY=base64:WvGKDN1skdfSTGu+iSflXjGPVTUxUxlNCs+G0QPKnhc=
       - DB_CONNECTION=sqlite
       - SPEEDTEST_SCHEDULE=0 */3 * * *
     volumes:
