@@ -345,7 +345,7 @@ services:
       - /mnt/media/Series:/media/Series
       - /mnt/media/Anime:/media/Anime
       - /home/iamngoni/kompressor/config.docker.toml:/app/config.toml:ro
-      - /home/iamngoni/kompressor/templates:/app/templates:ro
+      - /home/iamngoni/kompressor/templates:/app/templates
     environment:
       - RUST_LOG=info
     restart: unless-stopped
