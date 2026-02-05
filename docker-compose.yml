@@ -364,6 +364,11 @@ services:
   kompressor:
     image: kompressor:latest
     container_name: kompressor
+    user: "122:124"  # Run as jellyfin user to match media file ownership
+    group_add:
+      - "992"  # render group (host GID) for GPU access
+    devices:
+      - /dev/dri:/dev/dri  # Intel QSV hardware encoding
     ports:
       - "8078:8078"
     volumes:
