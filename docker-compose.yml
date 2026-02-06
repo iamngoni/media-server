@@ -340,7 +340,7 @@ services:
       - "8078:8078"
     volumes:
       - /home/iamngoni/kompressor/data:/app/data
-      - /mnt/media/.kompressor-temp:/app/temp
+      - /home/iamngoni/.kompressor-temp:/app/temp
       - /mnt/media/Movies:/media/Movies
       - /mnt/media/Series:/media/Series
       - /mnt/media/Anime:/media/Anime
