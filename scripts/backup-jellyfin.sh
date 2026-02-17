@@ -1,5 +1,6 @@
 #!/bin/bash
-# Jellyfin config backup script
+# Jellyfin config backup script — lean version
+# Only backs up databases + config XML/JSON (skips metadata/images/thumbnails)
 # Keeps last 7 daily backups
 
 BACKUP_DIR="/home/iamngoni/media-server/backups/jellyfin"
@@ -10,15 +11,26 @@ mkdir -p "$BACKUP_DIR"
 
 BACKUP_FILE="$BACKUP_DIR/jellyfin-config-$(date +%Y%m%d-%H%M%S).tar.gz"
 
-# Backup critical files (skip cache/transcodes to save space)
+# Backup only critical files:
+# - Database files (jellyfin.db, etc.)
+# - Config XML/JSON files
+# - Plugins list
+# - Scheduled tasks
+# Skip: metadata (5.7GB images), data/metadata (2GB thumbnails)
 tar -czf "$BACKUP_FILE" \
   -C "$CONFIG_DIR" \
   --exclude='cache' \
   --exclude='transcodes' \
-  --exclude='metadata/*/images' \
-  data \
+  --exclude='metadata' \
+  --exclude='data/metadata' \
+  --exclude='data/attachments' \
+  --exclude='data/subtitles' \
+  data/data \
+  data/ScheduledTasks \
+  data/collections \
+  data/playlists \
+  data/root \
   plugins \
-  root \
   *.xml \
   *.json \
   2>/dev/null
