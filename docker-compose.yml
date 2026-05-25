@@ -40,8 +40,7 @@ services:
     restart: unless-stopped
 
   jellyseerr:
-    # image: fallenbagel/jellyseerr:latest  # original - revert when seerr officially supports music
-    image: seerr-music:latest  # local fork with Lidarr/music support (PR #2132)
+    image: ghcr.io/seerr-team/seerr:latest
     container_name: jellyseerr
     environment:
       - PUID=122
@@ -364,4 +363,24 @@ services:
       - /home/iamngoni/nexus/.env
     environment:
       - RUST_LOG=info
+    restart: unless-stopped
+
+  finmail:
+    build: /home/iamngoni/finmail
+    container_name: finmail
+    ports:
+      - 8082:8080
+    environment:
+      - GMAIL_EMAIL=${FINMAIL_GMAIL_EMAIL}
+      - GMAIL_APP_PASSWORD=${FINMAIL_GMAIL_APP_PASSWORD}
+      - FINMAIL_DB_PATH=/data/finmail.db
+      - FINMAIL_HOST=0.0.0.0
+      - FINMAIL_PORT=8080
+      - IMAP_FOLDER=${FINMAIL_IMAP_FOLDER:-[Gmail]/All Mail}
+    volumes:
+      - ./finmail/data:/data
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.finmail.rule=Host(`finmail.homelab.local`)
+      - traefik.http.services.finmail.loadbalancer.server.port=8080
     restart: unless-stopped

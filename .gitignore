@@ -13,3 +13,5 @@ tdarr/logs/
 tdarr/server/
 tdarr/configs/
 jdownloader/config/
+
+*.db
