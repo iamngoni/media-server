@@ -21,16 +21,16 @@ services:
     image: lscr.io/linuxserver/jellyfin:latest
     container_name: jellyfin
     environment:
-      - PUID=122
-      - PGID=124
-      - TZ=Africa/Johannesburg
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
       - ./jellyfin/config:/config
-      - /mnt/media/Movies:/mnt/media/Movies
-      - /mnt/media/Series:/mnt/media/Series
-      - /mnt/media/Anime:/mnt/media/Anime
-      - /mnt/media/Animations:/mnt/media/Animations
-      - /mnt/media/Music:/mnt/media/Music
+      - ${MEDIA_DIR}/Movies:${MEDIA_DIR}/Movies
+      - ${MEDIA_DIR}/Series:${MEDIA_DIR}/Series
+      - ${MEDIA_DIR}/Anime:${MEDIA_DIR}/Anime
+      - ${MEDIA_DIR}/Animations:${MEDIA_DIR}/Animations
+      - ${MEDIA_DIR}/Music:${MEDIA_DIR}/Music
     ports:
       - 8096:8096
     labels:
@@ -43,9 +43,9 @@ services:
     image: ghcr.io/seerr-team/seerr:latest
     container_name: jellyseerr
     environment:
-      - PUID=122
-      - PGID=124
-      - TZ=Africa/Johannesburg
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
       - ./jellyseerr/config:/app/config
     ports:
@@ -62,9 +62,9 @@ services:
     container_name: qbittorrent
     network_mode: host
     environment:
-      - PUID=122
-      - PGID=124
-      - TZ=Africa/Johannesburg
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
       - WEBUI_PORT=8080
     volumes:
       - ./qbittorrent/config:/config
@@ -75,10 +75,10 @@ services:
     image: ghcr.io/alexta69/metube
     container_name: metube
     environment:
-      - UID=1000
-      - GID=1000
+      - UID=${PUID}
+      - GID=${PGID}
     volumes:
-      - /home/iamngoni/downloads:/downloads
+      - ${DOWNLOADS_DIR}:/downloads
     ports:
       - 8081:8081
     restart: unless-stopped
@@ -87,12 +87,12 @@ services:
     image: jlesage/jdownloader-2
     container_name: jdownloader
     environment:
-      - USER_ID=1000
-      - GROUP_ID=1000
-      - TZ=Africa/Johannesburg
+      - USER_ID=${PUID}
+      - GROUP_ID=${PGID}
+      - TZ=${TZ}
     volumes:
       - ./jdownloader/config:/config
-      - /home/iamngoni/downloads:/output
+      - ${DOWNLOADS_DIR}:/output
     ports:
       - 5800:5800 # Web UI
     restart: unless-stopped
@@ -101,9 +101,9 @@ services:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
     environment:
-      - PUID=122
-      - PGID=124
-      - TZ=Africa/Johannesburg
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
       - ./prowlarr/config:/config
     ports:
@@ -118,7 +118,7 @@ services:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     container_name: flaresolverr
     environment:
-      - TZ=Africa/Johannesburg
+      - TZ=${TZ}
       - LOG_LEVEL=info
     ports:
       - 8191:8191
@@ -129,14 +129,14 @@ services:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     environment:
-      - PUID=122
-      - PGID=124
-      - TZ=Africa/Johannesburg
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
       - ./sonarr/config:/config
       - ./downloads:/downloads
-      - /mnt/media/Series:/tv
-      - /mnt/media/Anime:/anime
+      - ${MEDIA_DIR}/Series:/tv
+      - ${MEDIA_DIR}/Anime:/anime
     ports:
       - 8989:8989
     depends_on:
@@ -151,13 +151,13 @@ services:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
     environment:
-      - PUID=122
-      - PGID=124
-      - TZ=Africa/Johannesburg
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
       - ./radarr/config:/config
       - ./downloads:/downloads
-      - /mnt/media/Movies:/movies
+      - ${MEDIA_DIR}/Movies:/movies
     ports:
       - 7878:7878
     depends_on:
@@ -172,13 +172,13 @@ services:
     image: lscr.io/linuxserver/lidarr:latest
     container_name: lidarr
     environment:
-      - PUID=122
-      - PGID=124
-      - TZ=Africa/Johannesburg
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
       - ./lidarr/config:/config
       - ./downloads:/downloads
-      - /mnt/media/Music:/music
+      - ${MEDIA_DIR}/Music:/music
     ports:
       - 8686:8686
     depends_on:
@@ -193,14 +193,14 @@ services:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
     environment:
-      - PUID=122
-      - PGID=124
-      - TZ=Africa/Johannesburg
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
       - ./bazarr/config:/config
       - ./downloads:/downloads
-      - /mnt/media/Movies:/movies
-      - /mnt/media/Series:/tv
+      - ${MEDIA_DIR}/Movies:/movies
+      - ${MEDIA_DIR}/Series:/tv
     ports:
       - 6767:6767
     depends_on:
@@ -216,7 +216,7 @@ services:
     image: ghcr.io/recyclarr/recyclarr:latest
     container_name: recyclarr
     environment:
-      - TZ=Africa/Johannesburg
+      - TZ=${TZ}
     volumes:
       - ./recyclarr/config:/config
     restart: unless-stopped
@@ -257,7 +257,7 @@ services:
     image: containrrr/watchtower:latest
     container_name: watchtower
     environment:
-      - TZ=Africa/Johannesburg
+      - TZ=${TZ}
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_SCHEDULE=0 0 4 * * *
       - DOCKER_API_VERSION=1.44
@@ -270,7 +270,7 @@ services:
     image: ghcr.io/home-assistant/home-assistant:stable
     container_name: homeassistant
     environment:
-      - TZ=Africa/Johannesburg
+      - TZ=${TZ}
     volumes:
       - ./homeassistant/config:/config
     network_mode: host
@@ -281,10 +281,10 @@ services:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
     environment:
-      - PUID=122
-      - PGID=124
-      - TZ=Africa/Johannesburg
-      - HOMEPAGE_ALLOWED_HOSTS=192.168.1.129:3000,100.78.244.68:3000,localhost:3000
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS:-localhost:3000}
     volumes:
       - ./homepage/config:/app/config
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -304,7 +304,7 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - APP_KEY=base64:WvGKDN1skdfSTGu+iSflXjGPVTUxUxlNCs+G0QPKnhc=
+      - APP_KEY=${SPEEDTEST_APP_KEY}
       - DB_CONNECTION=sqlite
       - SPEEDTEST_SCHEDULE=0 */3 * * *
     volumes:
@@ -330,21 +330,21 @@ services:
   kompressor:
     image: kompressor:latest
     container_name: kompressor
-    user: "122:124" # Run as jellyfin user to match media file ownership
+    user: "${PUID}:${PGID}"
     group_add:
-      - "992" # render group (host GID) for GPU access
+      - "${RENDER_GID:-992}" # render group (host GID) for GPU access
     devices:
       - /dev/dri:/dev/dri # Intel QSV hardware encoding
     ports:
       - "8078:8078"
     volumes:
-      - /home/iamngoni/kompressor/data:/app/data
-      - /home/iamngoni/.kompressor-temp:/app/temp
-      - /mnt/media/Movies:/media/Movies
-      - /mnt/media/Series:/media/Series
-      - /mnt/media/Anime:/media/Anime
-      - /home/iamngoni/kompressor/config.docker.toml:/app/config.toml:ro
-      - /home/iamngoni/kompressor/templates:/app/templates
+      - ${KOMPRESSOR_DIR}/data:/app/data
+      - ${KOMPRESSOR_TEMP_DIR}:/app/temp
+      - ${MEDIA_DIR}/Movies:/media/Movies
+      - ${MEDIA_DIR}/Series:/media/Series
+      - ${MEDIA_DIR}/Anime:/media/Anime
+      - ${KOMPRESSOR_DIR}/config.docker.toml:/app/config.toml:ro
+      - ${KOMPRESSOR_DIR}/templates:/app/templates
     environment:
       - RUST_LOG=info
     restart: unless-stopped
@@ -355,12 +355,12 @@ services:
     container_name: nexus
     network_mode: host
     volumes:
-      - /mnt/media:/mnt/media:ro
+      - ${MEDIA_DIR}:${MEDIA_DIR}:ro
       - /var/run/docker.sock:/var/run/docker.sock
-      - /tmp/clawdbot:/tmp/clawdbot:ro
-      - /home/iamngoni/.openclaw/logs:/var/log/openclaw:ro
+      - ${CLAWDBOT_SOCKET_DIR:-/tmp/clawdbot}:/tmp/clawdbot:ro
+      - ${OPENCLAW_LOGS_DIR}:/var/log/openclaw:ro
     env_file:
-      - /home/iamngoni/nexus/.env
+      - ${NEXUS_ENV_FILE}
     environment:
       - RUST_LOG=info
     restart: unless-stopped
