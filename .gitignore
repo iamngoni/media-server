@@ -15,3 +15,6 @@ tdarr/configs/
 jdownloader/config/
 
 *.db
+
+# Custom/personal services (locally-built images, personal paths)
+docker-compose.custom.yml
