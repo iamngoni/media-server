@@ -26,6 +26,7 @@ services:
       - TZ=${TZ}
     volumes:
       - ./jellyfin/config:/config
+      - ${MEDIA_DIR}:/mnt/media
       - ${MEDIA_DIR}/Movies:${MEDIA_DIR}/Movies
       - ${MEDIA_DIR}/Series:${MEDIA_DIR}/Series
       - ${MEDIA_DIR}/Anime:${MEDIA_DIR}/Anime
