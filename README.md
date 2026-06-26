@@ -24,7 +24,7 @@ Docker-based media server stack running on Ubuntu.
 | **Recyclarr** | — | TRaSH quality profile sync |
 | **Notifiarr** | 5454 | Push notifications |
 | **Kompressor** | 8078 | Local media transcoding queue |
-| **Nexus** | 3002 | Homelab operations dashboard |
+| **Nexus** | 3000 | Homelab operations dashboard |
 
 ## Prerequisites
 
@@ -96,7 +96,7 @@ qBittorrent runs with `network_mode: host`, so it is **not** reachable as `http:
 2. **Settings → Indexers → Indexer Proxies → Add → FlareSolverr**
    - Host: `http://flaresolverr:8191`
 3. **Indexers → Add Indexer** — add your trackers. For Cloudflare-protected ones, attach the FlareSolverr proxy tag.
-4. **Settings → General** — copy the API key (you'll need it for Apps and homepage).
+4. **Settings → General** — copy the API key (you'll need it for Apps).
 5. After Sonarr/Radarr/Lidarr are configured (steps 3–5), come back and **Settings → Apps → Add** each one:
    - Prowlarr URL (how the Arr reaches Prowlarr): `http://prowlarr:9696`
    - Sonarr URL: `http://sonarr:8989` — and the Sonarr API key
@@ -150,7 +150,7 @@ docker compose up -d unpackerr
    - Movies → `/mnt/media/Movies`
    - Shows → `/mnt/media/Series` and `/mnt/media/Anime` (or a separate "Anime" library)
    - Music → `/mnt/media/Music`
-3. (Optional) **Dashboard → Playback → Transcoding** — enable Intel QSV if you have an Intel iGPU. The `/dev/dri` device is already passed through.
+3. (Optional) **Dashboard → Playback → Transcoding** — enable hardware transcoding only if the host runtime exposes compatible devices.
 
 ### 9. Jellyseerr — `http://<server>:5055`
 
@@ -174,11 +174,9 @@ The running container handles scheduled syncs after that.
 
 Sign up at [notifiarr.com](https://notifiarr.com), paste the API key into `.env` as `NOTIFIARR_API_KEY`, then `docker compose up -d notifiarr`. Configure integrations through the Notifiarr web UI.
 
-### 12. Homepage — `http://<server>:3000`
+### 12. Nexus — `http://<server>:3000`
 
-Edit the YAML files under `homepage/config/` (`services.yaml`, `widgets.yaml`, `bookmarks.yaml`) — paste in API keys to enable per-service widgets. Restart with `docker compose restart homepage`.
-
-If you access homepage from a non-localhost address, update `HOMEPAGE_ALLOWED_HOSTS` in `.env` with a comma-separated list of `host:port` entries (e.g. `192.168.1.10:3000,homelab.local:3000`).
+Nexus replaces Homepage as the dashboard. It reads service URLs and API keys from `../nexus/.env` plus the `NEXUS_*` variables in this repo's `.env`.
 
 ## Environment Variables
 

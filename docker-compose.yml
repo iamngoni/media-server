@@ -276,26 +276,6 @@ services:
     network_mode: host
     restart: unless-stopped
 
-  # ── Dashboard ──────────────────────────────────────────
-  homepage:
-    image: ghcr.io/gethomepage/homepage:latest
-    container_name: homepage
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS:-localhost:3000}
-    volumes:
-      - ./homepage/config:/app/config
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    ports:
-      - 3000:3000
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.homepage.rule=Host(`home.homelab.local`)
-      - traefik.http.services.homepage.loadbalancer.server.port=3000
-    restart: unless-stopped
-
   # ── Monitoring ─────────────────────────────────────────
   speedtest-tracker:
     image: lscr.io/linuxserver/speedtest-tracker:latest
@@ -357,7 +337,7 @@ services:
       - TZ=${TZ}
       - RUST_LOG=${NEXUS_LOG_LEVEL:-info}
       - HOST_IP=${NEXUS_HOST_IP:-localhost}
-      - PORT=${NEXUS_PORT:-3002}
+      - PORT=${NEXUS_PORT:-3000}
       - WEATHER_LOCATION=${NEXUS_WEATHER_LOCATION:-Sandton}
       - QBIT_URL=${NEXUS_QBIT_URL:-http://host.docker.internal:8080}
       - JELLYFIN_URL=${NEXUS_JELLYFIN_URL:-http://host.docker.internal:8096}
@@ -369,5 +349,5 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${OPENCLAW_LOG_DIR:-./openclaw/logs}:/root/.openclaw/logs:ro
     ports:
-      - ${NEXUS_PORT:-3002}:${NEXUS_PORT:-3002}
+      - ${NEXUS_PORT:-3000}:${NEXUS_PORT:-3000}
     restart: unless-stopped
