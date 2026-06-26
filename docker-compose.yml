@@ -376,10 +376,22 @@ services:
       - PORT=${NEXUS_PORT:-3000}
       - WEATHER_LOCATION=${NEXUS_WEATHER_LOCATION:-Sandton}
       - QBIT_URL=${NEXUS_QBIT_URL:-http://host.docker.internal:8080}
-      - JELLYFIN_URL=${NEXUS_JELLYFIN_URL:-http://host.docker.internal:8096}
-      - SONARR_URL=${NEXUS_SONARR_URL:-http://host.docker.internal:8989}
-      - RADARR_URL=${NEXUS_RADARR_URL:-http://host.docker.internal:7878}
-      - SPEEDTEST_URL=${NEXUS_SPEEDTEST_URL:-http://host.docker.internal:8765}
+      - JELLYFIN_URL=http://jellyfin:8096
+      - SONARR_URL=http://sonarr:8989
+      - RADARR_URL=http://radarr:7878
+      - LIDARR_URL=http://lidarr:8686
+      - BAZARR_URL=http://bazarr:6767
+      - PROWLARR_URL=http://prowlarr:9696
+      - JELLYSEERR_URL=http://jellyseerr:5055
+      - KOMPRESSOR_URL=http://kompressor:8078
+      - METUBE_URL=http://metube:8081
+      - JDOWNLOADER_URL=http://jdownloader:5800
+      - HOME_ASSISTANT_URL=http://host.docker.internal:8123
+      - UPTIME_KUMA_URL=http://uptime-kuma:3001
+      - SPEEDTEST_URL=http://speedtest-tracker:80
+      - TRAEFIK_URL=http://traefik:8080
+      - FLARESOLVERR_URL=http://flaresolverr:8191
+      - NEXUS_URL=http://nexus:3000/healthz
     volumes:
       - type: volume
         source: toshiba_ext
