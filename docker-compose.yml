@@ -26,12 +26,11 @@ services:
       - TZ=${TZ}
     volumes:
       - ./jellyfin/config:/config
-      - ${MEDIA_DIR}:/mnt/media
-      - ${MEDIA_DIR}/Movies:${MEDIA_DIR}/Movies
-      - ${MEDIA_DIR}/Series:${MEDIA_DIR}/Series
-      - ${MEDIA_DIR}/Anime:${MEDIA_DIR}/Anime
-      - ${MEDIA_DIR}/Animations:${MEDIA_DIR}/Animations
-      - ${MEDIA_DIR}/Music:${MEDIA_DIR}/Music
+      - toshiba_ext:/mnt/media
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 1048576
     ports:
       - 8096:8096
     labels:
@@ -136,8 +135,16 @@ services:
     volumes:
       - ./sonarr/config:/config
       - ./downloads:/downloads
-      - ${MEDIA_DIR}/Series:/tv
-      - ${MEDIA_DIR}/Anime:/anime
+      - type: volume
+        source: toshiba_ext
+        target: /tv
+        volume:
+          subpath: Series
+      - type: volume
+        source: toshiba_ext
+        target: /anime
+        volume:
+          subpath: Anime
     ports:
       - 8989:8989
     depends_on:
@@ -158,7 +165,11 @@ services:
     volumes:
       - ./radarr/config:/config
       - ./downloads:/downloads
-      - ${MEDIA_DIR}/Movies:/movies
+      - type: volume
+        source: toshiba_ext
+        target: /movies
+        volume:
+          subpath: Movies
     ports:
       - 7878:7878
     depends_on:
@@ -179,7 +190,11 @@ services:
     volumes:
       - ./lidarr/config:/config
       - ./downloads:/downloads
-      - ${MEDIA_DIR}/Music:/music
+      - type: volume
+        source: toshiba_ext
+        target: /music
+        volume:
+          subpath: Music
     ports:
       - 8686:8686
     depends_on:
@@ -200,8 +215,16 @@ services:
     volumes:
       - ./bazarr/config:/config
       - ./downloads:/downloads
-      - ${MEDIA_DIR}/Movies:/movies
-      - ${MEDIA_DIR}/Series:/tv
+      - type: volume
+        source: toshiba_ext
+        target: /movies
+        volume:
+          subpath: Movies
+      - type: volume
+        source: toshiba_ext
+        target: /tv
+        volume:
+          subpath: Series
     ports:
       - 6767:6767
     depends_on:
@@ -317,9 +340,21 @@ services:
     volumes:
       - ${KOMPRESSOR_DATA_DIR:-./kompressor/data}:/app/data
       - ${KOMPRESSOR_TEMP_DIR:-./kompressor/temp}:/app/temp
-      - ${MEDIA_DIR}/Movies:/media/Movies
-      - ${MEDIA_DIR}/Series:/media/Series
-      - ${MEDIA_DIR}/Anime:/media/Anime
+      - type: volume
+        source: toshiba_ext
+        target: /media/Movies
+        volume:
+          subpath: Movies
+      - type: volume
+        source: toshiba_ext
+        target: /media/Series
+        volume:
+          subpath: Series
+      - type: volume
+        source: toshiba_ext
+        target: /media/Anime
+        volume:
+          subpath: Anime
       - ${KOMPRESSOR_CONFIG:-../kompressor/config.docker.toml}:/app/config.toml:ro
       - ${KOMPRESSOR_TEMPLATES:-../kompressor/templates}:/app/templates:ro
     environment:
@@ -346,9 +381,24 @@ services:
       - RADARR_URL=${NEXUS_RADARR_URL:-http://host.docker.internal:7878}
       - SPEEDTEST_URL=${NEXUS_SPEEDTEST_URL:-http://host.docker.internal:8765}
     volumes:
-      - ${MEDIA_DIR}:/mnt/media:ro
+      - type: volume
+        source: toshiba_ext
+        target: /mnt/media
+        read_only: true
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ${OPENCLAW_LOG_DIR:-./openclaw/logs}:/root/.openclaw/logs:ro
     ports:
       - ${NEXUS_PORT:-3000}:${NEXUS_PORT:-3000}
     restart: unless-stopped
+
+volumes:
+  # Toshiba external drive, attached to OrbStack with:
+  #   orbctl usb attach 00140000
+  # Docker mounts the exFAT partition directly from Linux, avoiding macOS virtiofs.
+  toshiba_ext:
+    name: toshiba_ext
+    driver: local
+    driver_opts:
+      type: exfat
+      device: /dev/sda2
+      o: uid=501,gid=20,umask=000
