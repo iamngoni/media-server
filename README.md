@@ -23,12 +23,18 @@ Docker-based media server stack running on Ubuntu.
 | **Unpackerr** | — | Auto-extract downloads |
 | **Recyclarr** | — | TRaSH quality profile sync |
 | **Notifiarr** | 5454 | Push notifications |
+| **Kompressor** | 8078 | Local media transcoding queue |
+| **Nexus** | 3002 | Homelab operations dashboard |
 
 ## Prerequisites
 
-- Linux host with Docker + Docker Compose
+- Linux host with Docker + Docker Compose, or macOS with OrbStack/Docker Desktop
 - Find your user/group IDs: `id $USER` → use the `uid` / `gid` for `PUID` / `PGID`
-- (Kompressor only) Find the render group GID for GPU access: `getent group render | cut -d: -f3` → use for `RENDER_GID`
+- Clone sibling repos for locally-built services:
+  ```bash
+  git clone https://github.com/iamngoni/kompressor.git ../kompressor
+  git clone https://github.com/iamngoni/nexus.git ../nexus
+  ```
 - Create the media library structure (paths must match `MEDIA_DIR` in `.env`):
   ```bash
   sudo mkdir -p /mnt/media/{Movies,Series,Anime,Animations,Music}
@@ -208,10 +214,11 @@ Key directories to back up:
 ### Restoring on a New Machine
 
 1. Clone this repo
-2. Restore config directories from backup
-3. Create the media mount and downloads dir, matching `MEDIA_DIR` / `DOWNLOADS_DIR` in `.env`
-4. Copy `.env.example` → `.env` and fill in `PUID`, `PGID`, and the host paths to match the restored state
-5. `docker compose up -d`
+2. Clone `kompressor` and `nexus` next to this repo
+3. Restore config directories from backup
+4. Create the media mount and downloads dir, matching `MEDIA_DIR` / `DOWNLOADS_DIR` in `.env`
+5. Copy `.env.example` → `.env` and fill in `PUID`, `PGID`, and the host paths to match the restored state
+6. `docker compose up -d`
 
 ### ⚠️ Jellyfin LinuxServer Image Path Quirk
 
@@ -232,6 +239,8 @@ If migrating from a **native Jellyfin install** (where data dir was `/var/lib/je
 - DNS fix: `/etc/systemd/resolved.conf.d/fallback-dns.conf` with Google/Cloudflare DNS for reliable Docker pulls
 - Docker daemon config: `/etc/docker/daemon.json` with DNS `[8.8.8.8, 8.8.4.4, 1.1.1.1]` for container DNS
 - MeTube downloads to `DOWNLOADS_DIR` — manually move files into `/mnt/media/...` (or whatever `MEDIA_DIR` is set to)
+- Kompressor and Nexus are now part of the main compose file. The old separate/custom compose file is no longer needed.
+- On macOS, set `MEDIA_DIR` to the external drive path under `/Volumes/...`.
 
 ## Seerr (Jellyseerr Fork with Music Support)
 

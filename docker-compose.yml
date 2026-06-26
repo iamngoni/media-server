@@ -277,24 +277,24 @@ services:
     restart: unless-stopped
 
   # ── Dashboard ──────────────────────────────────────────
-  # homepage:
-  #   image: ghcr.io/gethomepage/homepage:latest
-  #   container_name: homepage
-  #   environment:
-  #     - PUID=${PUID}
-  #     - PGID=${PGID}
-  #     - TZ=${TZ}
-  #     - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS:-localhost:3000}
-  #   volumes:
-  #     - ./homepage/config:/app/config
-  #     - /var/run/docker.sock:/var/run/docker.sock:ro
-  #   ports:
-  #     - 3000:3000
-  #   labels:
-  #     - traefik.enable=true
-  #     - traefik.http.routers.homepage.rule=Host(`home.homelab.local`)
-  #     - traefik.http.services.homepage.loadbalancer.server.port=3000
-  #   restart: unless-stopped
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS:-localhost:3000}
+    volumes:
+      - ./homepage/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - 3000:3000
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.homepage.rule=Host(`home.homelab.local`)
+      - traefik.http.services.homepage.loadbalancer.server.port=3000
+    restart: unless-stopped
 
   # ── Monitoring ─────────────────────────────────────────
   speedtest-tracker:
@@ -326,7 +326,48 @@ services:
       - 3001:3001
     restart: unless-stopped
 
-  # ── Custom / personal services ─────────────────────────
-  # Locally-built images (kompressor, nexus) live in docker-compose.custom.yml,
-  # which is gitignored and not loaded by default. To run them:
-  #   docker compose -f docker-compose.yml -f docker-compose.custom.yml up -d
+  # ── Transcoding ────────────────────────────────────────
+  kompressor:
+    build: ${KOMPRESSOR_DIR:-../kompressor}
+    image: kompressor:latest
+    container_name: kompressor
+    ports:
+      - 8078:8078
+    volumes:
+      - ${KOMPRESSOR_DATA_DIR:-./kompressor/data}:/app/data
+      - ${KOMPRESSOR_TEMP_DIR:-./kompressor/temp}:/app/temp
+      - ${MEDIA_DIR}/Movies:/media/Movies
+      - ${MEDIA_DIR}/Series:/media/Series
+      - ${MEDIA_DIR}/Anime:/media/Anime
+      - ${KOMPRESSOR_CONFIG:-../kompressor/config.docker.toml}:/app/config.toml:ro
+      - ${KOMPRESSOR_TEMPLATES:-../kompressor/templates}:/app/templates:ro
+    environment:
+      - RUST_LOG=${KOMPRESSOR_LOG_LEVEL:-info}
+    restart: unless-stopped
+
+  # ── Homelab Dashboard ──────────────────────────────────
+  nexus:
+    build: ${NEXUS_DIR:-../nexus}
+    image: nexus:latest
+    container_name: nexus
+    env_file:
+      - path: ${NEXUS_ENV_FILE:-../nexus/.env}
+        required: false
+    environment:
+      - TZ=${TZ}
+      - RUST_LOG=${NEXUS_LOG_LEVEL:-info}
+      - HOST_IP=${NEXUS_HOST_IP:-localhost}
+      - PORT=${NEXUS_PORT:-3002}
+      - WEATHER_LOCATION=${NEXUS_WEATHER_LOCATION:-Sandton}
+      - QBIT_URL=${NEXUS_QBIT_URL:-http://host.docker.internal:8080}
+      - JELLYFIN_URL=${NEXUS_JELLYFIN_URL:-http://host.docker.internal:8096}
+      - SONARR_URL=${NEXUS_SONARR_URL:-http://host.docker.internal:8989}
+      - RADARR_URL=${NEXUS_RADARR_URL:-http://host.docker.internal:7878}
+      - SPEEDTEST_URL=${NEXUS_SPEEDTEST_URL:-http://host.docker.internal:8765}
+    volumes:
+      - ${MEDIA_DIR}:/mnt/media:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${OPENCLAW_LOG_DIR:-./openclaw/logs}:/root/.openclaw/logs:ro
+    ports:
+      - ${NEXUS_PORT:-3002}:${NEXUS_PORT:-3002}
+    restart: unless-stopped
