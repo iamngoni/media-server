@@ -1,0 +1,9 @@
+tunnel: 15f0b076-961b-4097-ad80-fc27464e2c19
+credentials-file: /etc/cloudflared/15f0b076-961b-4097-ad80-fc27464e2c19.json
+
+ingress:
+  - hostname: "*.antonlabs.cc"
+    service: https://traefik:443
+    originRequest:
+      noTLSVerify: true
+  - service: http_status:404

@@ -5,6 +5,8 @@ downloads/
 # Environment files with secrets
 .env
 !.env.example
+cloudflared/*.json
+letsencrypt/
 
 # OS
 .DS_Store

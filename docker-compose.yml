@@ -6,14 +6,51 @@ services:
     command:
       - --api.dashboard=true
       - --api.insecure=true
+      - --accesslog=true
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
+      - --providers.file.directory=/dynamic
+      - --providers.file.watch=true
       - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.asdefault=true
+      - --entrypoints.websecure.http.tls.certresolver=cloudflare
+      - --entrypoints.websecure.http.tls.domains[0].main=antonlabs.cc
+      - --entrypoints.websecure.http.tls.domains[0].sans=*.antonlabs.cc
+      - --certificatesresolvers.cloudflare.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.cloudflare.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare
+      - --certificatesresolvers.cloudflare.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53
+    environment:
+      - CLOUDFLARE_DNS_API_TOKEN=${CLOUDFLARE_DNS_API_TOKEN}
+      - CF_DNS_API_TOKEN=${CLOUDFLARE_DNS_API_TOKEN}
     ports:
       - 80:80
+      - 443:443
       - 8280:8080 # Traefik dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+      - ./tailscale-certs:/tailscale-certs:ro
+      - ./traefik/dynamic:/dynamic:ro
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik.rule=Host(`traefik.antonlabs.cc`)
+      - traefik.http.routers.traefik.service=api@internal
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    command: tunnel --config /etc/cloudflared/config.yml run antonlabs
+    profiles:
+      - public
+    depends_on:
+      - traefik
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
     restart: unless-stopped
 
   # ── Media Server ───────────────────────────────────────
@@ -35,7 +72,7 @@ services:
       - 8096:8096
     labels:
       - traefik.enable=true
-      - traefik.http.routers.jellyfin.rule=Host(`jellyfin.homelab.local`)
+      - traefik.http.routers.jellyfin.rule=Host(`media.antonlabs.cc`) || Host(`jellyfin.antonlabs.cc`)
       - traefik.http.services.jellyfin.loadbalancer.server.port=8096
     restart: unless-stopped
 
@@ -52,7 +89,7 @@ services:
       - 5055:5055
     labels:
       - traefik.enable=true
-      - traefik.http.routers.jellyseerr.rule=Host(`jellyseerr.homelab.local`)
+      - traefik.http.routers.jellyseerr.rule=Host(`requests.antonlabs.cc`) || Host(`jellyseerr.antonlabs.cc`)
       - traefik.http.services.jellyseerr.loadbalancer.server.port=5055
     restart: unless-stopped
 
@@ -78,9 +115,17 @@ services:
       - UID=${PUID}
       - GID=${PGID}
     volumes:
-      - ${DOWNLOADS_DIR}:/downloads
+      - type: volume
+        source: toshiba_ext
+        target: /downloads
+        volume:
+          subpath: MeTube
     ports:
       - 8081:8081
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.metube.rule=Host(`metube.antonlabs.cc`)
+      - traefik.http.services.metube.loadbalancer.server.port=8081
     restart: unless-stopped
 
   jdownloader:
@@ -95,6 +140,10 @@ services:
       - ${DOWNLOADS_DIR}:/output
     ports:
       - 5800:5800 # Web UI
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.jdownloader.rule=Host(`jdownloader.antonlabs.cc`)
+      - traefik.http.services.jdownloader.loadbalancer.server.port=5800
     restart: unless-stopped
 
   prowlarr:
@@ -110,7 +159,7 @@ services:
       - 9696:9696
     labels:
       - traefik.enable=true
-      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.homelab.local`)
+      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.antonlabs.cc`)
       - traefik.http.services.prowlarr.loadbalancer.server.port=9696
     restart: unless-stopped
 
@@ -122,6 +171,10 @@ services:
       - LOG_LEVEL=info
     ports:
       - 8191:8191
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.flaresolverr.rule=Host(`flaresolverr.antonlabs.cc`)
+      - traefik.http.services.flaresolverr.loadbalancer.server.port=8191
     restart: unless-stopped
 
   # ── Media Management (Arr Stack) ──────────────────────
@@ -151,7 +204,7 @@ services:
       - qbittorrent
     labels:
       - traefik.enable=true
-      - traefik.http.routers.sonarr.rule=Host(`sonarr.homelab.local`)
+      - traefik.http.routers.sonarr.rule=Host(`sonarr.antonlabs.cc`)
       - traefik.http.services.sonarr.loadbalancer.server.port=8989
     restart: unless-stopped
 
@@ -176,7 +229,7 @@ services:
       - qbittorrent
     labels:
       - traefik.enable=true
-      - traefik.http.routers.radarr.rule=Host(`radarr.homelab.local`)
+      - traefik.http.routers.radarr.rule=Host(`radarr.antonlabs.cc`)
       - traefik.http.services.radarr.loadbalancer.server.port=7878
     restart: unless-stopped
 
@@ -201,7 +254,7 @@ services:
       - qbittorrent
     labels:
       - traefik.enable=true
-      - traefik.http.routers.lidarr.rule=Host(`lidarr.homelab.local`)
+      - traefik.http.routers.lidarr.rule=Host(`lidarr.antonlabs.cc`)
       - traefik.http.services.lidarr.loadbalancer.server.port=8686
     restart: unless-stopped
 
@@ -231,7 +284,7 @@ services:
       - radarr
     labels:
       - traefik.enable=true
-      - traefik.http.routers.bazarr.rule=Host(`bazarr.homelab.local`)
+      - traefik.http.routers.bazarr.rule=Host(`bazarr.antonlabs.cc`)
       - traefik.http.services.bazarr.loadbalancer.server.port=6767
     restart: unless-stopped
 
@@ -273,7 +326,7 @@ services:
       - 5454:5454
     labels:
       - traefik.enable=true
-      - traefik.http.routers.notifiarr.rule=Host(`notifiarr.homelab.local`)
+      - traefik.http.routers.notifiarr.rule=Host(`notifiarr.antonlabs.cc`)
       - traefik.http.services.notifiarr.loadbalancer.server.port=5454
     restart: unless-stopped
 
@@ -317,7 +370,7 @@ services:
       - 8765:80
     labels:
       - traefik.enable=true
-      - traefik.http.routers.speedtest.rule=Host(`speedtest.homelab.local`)
+      - traefik.http.routers.speedtest.rule=Host(`speedtest.antonlabs.cc`)
       - traefik.http.services.speedtest.loadbalancer.server.port=80
     restart: unless-stopped
 
@@ -328,6 +381,10 @@ services:
       - ./uptime-kuma/data:/app/data
     ports:
       - 3001:3001
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.uptime-kuma.rule=Host(`status.antonlabs.cc`) || Host(`uptime.antonlabs.cc`)
+      - traefik.http.services.uptime-kuma.loadbalancer.server.port=3001
     restart: unless-stopped
 
   # ── Transcoding ────────────────────────────────────────
@@ -337,6 +394,10 @@ services:
     container_name: kompressor
     ports:
       - 8078:8078
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.kompressor.rule=Host(`kompressor.antonlabs.cc`)
+      - traefik.http.services.kompressor.loadbalancer.server.port=8078
     volumes:
       - ${KOMPRESSOR_DATA_DIR:-./kompressor/data}:/app/data
       - ${KOMPRESSOR_TEMP_DIR:-./kompressor/temp}:/app/temp
@@ -376,22 +437,39 @@ services:
       - PORT=${NEXUS_PORT:-3000}
       - WEATHER_LOCATION=${NEXUS_WEATHER_LOCATION:-Sandton}
       - QBIT_URL=${NEXUS_QBIT_URL:-http://host.docker.internal:8080}
+      - QBIT_PUBLIC_URL=https://qbit.antonlabs.cc
       - JELLYFIN_URL=http://jellyfin:8096
+      - JELLYFIN_PUBLIC_URL=https://media.antonlabs.cc
       - SONARR_URL=http://sonarr:8989
+      - SONARR_PUBLIC_URL=https://sonarr.antonlabs.cc
       - RADARR_URL=http://radarr:7878
+      - RADARR_PUBLIC_URL=https://radarr.antonlabs.cc
       - LIDARR_URL=http://lidarr:8686
+      - LIDARR_PUBLIC_URL=https://lidarr.antonlabs.cc
       - BAZARR_URL=http://bazarr:6767
+      - BAZARR_PUBLIC_URL=https://bazarr.antonlabs.cc
       - PROWLARR_URL=http://prowlarr:9696
+      - PROWLARR_PUBLIC_URL=https://prowlarr.antonlabs.cc
       - JELLYSEERR_URL=http://jellyseerr:5055
+      - JELLYSEERR_PUBLIC_URL=https://requests.antonlabs.cc
       - KOMPRESSOR_URL=http://kompressor:8078
+      - KOMPRESSOR_PUBLIC_URL=https://kompressor.antonlabs.cc
       - METUBE_URL=http://metube:8081
+      - METUBE_PUBLIC_URL=https://metube.antonlabs.cc
       - JDOWNLOADER_URL=http://jdownloader:5800
+      - JDOWNLOADER_PUBLIC_URL=https://jdownloader.antonlabs.cc
       - HOME_ASSISTANT_URL=http://host.docker.internal:8123
+      - HOME_ASSISTANT_PUBLIC_URL=https://home.antonlabs.cc
       - UPTIME_KUMA_URL=http://uptime-kuma:3001
+      - UPTIME_KUMA_PUBLIC_URL=https://status.antonlabs.cc
       - SPEEDTEST_URL=http://speedtest-tracker:80
+      - SPEEDTEST_PUBLIC_URL=https://speedtest.antonlabs.cc
       - TRAEFIK_URL=http://traefik:8080
+      - TRAEFIK_PUBLIC_URL=https://traefik.antonlabs.cc
       - FLARESOLVERR_URL=http://flaresolverr:8191
+      - FLARESOLVERR_PUBLIC_URL=https://flaresolverr.antonlabs.cc
       - NEXUS_URL=http://nexus:3000/healthz
+      - NEXUS_PUBLIC_URL=https://dash.antonlabs.cc
     volumes:
       - type: volume
         source: toshiba_ext
@@ -401,16 +479,18 @@ services:
       - ${OPENCLAW_LOG_DIR:-./openclaw/logs}:/root/.openclaw/logs:ro
     ports:
       - ${NEXUS_PORT:-3000}:${NEXUS_PORT:-3000}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.nexus.rule=Host(`dash.antonlabs.cc`) || Host(`nexus.antonlabs.cc`)
+      - traefik.http.services.nexus.loadbalancer.server.port=${NEXUS_PORT:-3000}
     restart: unless-stopped
 
 volumes:
-  # Toshiba external drive, attached to OrbStack with:
-  #   orbctl usb attach 00140000
-  # Docker mounts the exFAT partition directly from Linux, avoiding macOS virtiofs.
+  # Toshiba external drive mounted by macOS and shared into OrbStack.
   toshiba_ext:
     name: toshiba_ext
     driver: local
     driver_opts:
-      type: exfat
-      device: /dev/sda2
-      o: uid=501,gid=20,umask=000
+      type: none
+      device: /Volumes/TOSHIBA EXT
+      o: bind

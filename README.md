@@ -194,7 +194,38 @@ Sensitive keys are stored in `.env` (gitignored). See `.env.example` for require
 
 ## Traefik Routes
 
-Services are accessible via `*.homelab.local` hostnames when DNS/hosts file is configured.
+Services are routed by Traefik on `antonlabs.cc` hostnames. Private media/admin apps should use DNS-only Cloudflare records pointing at the Mac mini's Tailscale IP (`100.122.121.82`), so they resolve from anywhere but only connect from devices on the tailnet.
+
+Traefik serves HTTPS on port 443 and redirects HTTP to HTTPS. Certificates are issued with Let's Encrypt through the Cloudflare DNS challenge for `antonlabs.cc` and `*.antonlabs.cc`; the ignored local `.env` must provide `ACME_EMAIL` and `CLOUDFLARE_DNS_API_TOKEN`.
+
+Private lane:
+
+- `media.antonlabs.cc` / `jellyfin.antonlabs.cc` → Jellyfin
+- `requests.antonlabs.cc` / `jellyseerr.antonlabs.cc` → Jellyseerr
+- `dash.antonlabs.cc` / `nexus.antonlabs.cc` → Nexus
+- `traefik.antonlabs.cc` → Traefik dashboard
+- `sonarr.antonlabs.cc`, `radarr.antonlabs.cc`, `lidarr.antonlabs.cc`, `bazarr.antonlabs.cc`, `prowlarr.antonlabs.cc`
+- `status.antonlabs.cc` / `uptime.antonlabs.cc` → Uptime Kuma
+- `speedtest.antonlabs.cc`, `kompressor.antonlabs.cc`, `metube.antonlabs.cc`, `jdownloader.antonlabs.cc`, `notifiarr.antonlabs.cc`
+- `openclaw.antonlabs.cc` → OpenClaw Control
+- `mlx.antonlabs.cc` → Anton MLX local chat/control plane
+
+Public lane:
+
+- Run public apps through Cloudflare Tunnel. The compose file includes an optional `cloudflared` service behind the `public` profile:
+  ```bash
+  docker compose --profile public up -d cloudflared
+  ```
+- The local tunnel config lives in `cloudflared/config.yml`; secret tunnel credentials are stored as ignored `cloudflared/*.json` files.
+- Configure public hostnames such as `heimdall.antonlabs.cc` to target Traefik, then add a matching Traefik router/service for the public app.
+
+To sync Cloudflare DNS records for the private lane:
+
+```bash
+./scripts/sync-cloudflare-antonlabs.sh
+```
+
+If `CLOUDFLARE_API_TOKEN` is not set, the script will reuse the token from `~/.cloudflared/cert.pem` created by `cloudflared tunnel login`. If `CF_TUNNEL_UUID` is also set, the script will create the public `heimdall.antonlabs.cc` CNAME to the tunnel target. The same cert can be decoded to populate `CLOUDFLARE_DNS_API_TOKEN` in `.env` for Traefik's DNS challenge.
 
 ## Backup & Migration
 
