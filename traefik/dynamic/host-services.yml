@@ -9,13 +9,6 @@ http:
     openclaw:
       rule: Host(`openclaw.antonlabs.cc`) || Host(`ngonidzashes-mac-mini.tailafe874.ts.net`)
       service: openclaw
-    anton-mlx:
-      rule: Host(`mlx.antonlabs.cc`)
-      service: anton-mlx
-    anton-mlx-openai:
-      rule: Host(`mlx.antonlabs.cc`) && PathPrefix(`/v1`)
-      priority: 100
-      service: anton-mlx-openai
     heimdall-mcp:
       rule: Host(`heimdall.antonlabs.cc`) && (PathPrefix(`/mcp`) || PathPrefix(`/oauth`) || PathPrefix(`/.well-known/oauth`))
       priority: 100
@@ -37,14 +30,6 @@ http:
       loadBalancer:
         servers:
           - url: http://host.docker.internal:18789
-    anton-mlx:
-      loadBalancer:
-        servers:
-          - url: http://host.docker.internal:18881
-    anton-mlx-openai:
-      loadBalancer:
-        servers:
-          - url: http://host.docker.internal:18881
     heimdall:
       loadBalancer:
         servers:

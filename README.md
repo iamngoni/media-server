@@ -208,7 +208,6 @@ Private lane:
 - `status.antonlabs.cc` / `uptime.antonlabs.cc` → Uptime Kuma
 - `speedtest.antonlabs.cc`, `kompressor.antonlabs.cc`, `metube.antonlabs.cc`, `jdownloader.antonlabs.cc`, `notifiarr.antonlabs.cc`
 - `openclaw.antonlabs.cc` → OpenClaw Control
-- `mlx.antonlabs.cc` → Anton MLX local chat/control plane
 
 Public lane:
 

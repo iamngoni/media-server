@@ -35,7 +35,6 @@ public_hosts=(
   homeassistant
   flaresolverr
   openclaw
-  mlx
 )
 
 require() {
