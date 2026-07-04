@@ -59,6 +59,26 @@ docker compose up -d
 
 Then wire the services together in the order below — the Arr stack depends on qBittorrent and Prowlarr.
 
+## Mac Mini Toshiba Media Mount
+
+On the Mac mini, the Toshiba media drive must be attached directly to OrbStack, not shared from macOS as `/Volumes/TOSHIBA EXT`. The `toshiba_ext` Docker volume mounts the exFAT partition from `/dev/sda2`; using the macOS `/Volumes` path makes Jellyfin scan through `virtiofs` and can trigger `Too many open files in system` errors.
+
+Useful checks:
+
+```bash
+./scripts/check-media-mount.sh
+docker volume inspect toshiba_ext
+docker exec jellyfin sh -lc 'mount | grep " /mnt/media "'
+```
+
+Expected state:
+
+- `docker volume inspect toshiba_ext` shows `type=exfat`, `device=/dev/sda2`, and `o=uid=501,gid=20,umask=000`.
+- Jellyfin shows `/dev/sda2 on /mnt/media type exfat`.
+- `/Volumes/TOSHIBA EXT` is not mounted by macOS.
+
+The LaunchAgent `~/Library/LaunchAgents/cc.antonlabs.media-server.plist` runs `./scripts/wait-for-toshiba-and-start.sh` at login and every five minutes. That script waits for Docker, unmounts the drive from macOS if needed, attaches USB device `00140000` to OrbStack, waits for `/dev/sda2`, repairs stale Docker volume metadata, starts the media services, and fails if Jellyfin is using `virtiofs`.
+
 ## Service Configuration
 
 ### 1. qBittorrent — `http://<server>:8080`
@@ -268,7 +288,7 @@ If migrating from a **native Jellyfin install** (where data dir was `/var/lib/je
 - Docker daemon config: `/etc/docker/daemon.json` with DNS `[8.8.8.8, 8.8.4.4, 1.1.1.1]` for container DNS
 - MeTube downloads to `DOWNLOADS_DIR` — manually move files into `/mnt/media/...` (or whatever `MEDIA_DIR` is set to)
 - Kompressor and Nexus are now part of the main compose file. The old separate/custom compose file is no longer needed.
-- On macOS, set `MEDIA_DIR` to the external drive path under `/Volumes/...`.
+- On this Mac mini, keep the Toshiba drive attached directly to OrbStack as `/dev/sda2`; do not use the macOS `/Volumes/TOSHIBA EXT` path for Docker media mounts.
 
 ## Seerr (Jellyseerr Fork with Music Support)
 

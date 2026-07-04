@@ -486,11 +486,13 @@ services:
     restart: unless-stopped
 
 volumes:
-  # Toshiba external drive mounted by macOS and shared into OrbStack.
+  # Toshiba external drive, attached to OrbStack with:
+  #   orbctl usb attach 00140000
+  # Docker mounts the exFAT partition directly from Linux, avoiding macOS virtiofs.
   toshiba_ext:
     name: toshiba_ext
     driver: local
     driver_opts:
-      type: none
-      device: /Volumes/TOSHIBA EXT
-      o: bind
+      type: exfat
+      device: /dev/sda2
+      o: uid=501,gid=20,umask=000
