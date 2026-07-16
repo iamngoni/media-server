@@ -9,6 +9,17 @@ http:
     openclaw:
       rule: Host(`openclaw.antonlabs.cc`) || Host(`ngonidzashes-mac-mini.tailafe874.ts.net`)
       service: openclaw
+    deploy-realtime:
+      rule: Host(`deploy.antonlabs.cc`) && PathPrefix(`/app`)
+      priority: 100
+      service: coolify-realtime
+    deploy-terminal:
+      rule: Host(`deploy.antonlabs.cc`) && PathPrefix(`/terminal/ws`)
+      priority: 100
+      service: coolify-terminal
+    deploy:
+      rule: Host(`deploy.antonlabs.cc`)
+      service: coolify-dashboard
     heimdall-mcp:
       rule: Host(`heimdall.antonlabs.cc`) && (PathPrefix(`/mcp`) || PathPrefix(`/oauth`) || PathPrefix(`/.well-known/oauth`))
       priority: 100
@@ -30,6 +41,18 @@ http:
       loadBalancer:
         servers:
           - url: http://host.docker.internal:18789
+    coolify-dashboard:
+      loadBalancer:
+        servers:
+          - url: http://host.docker.internal:8000
+    coolify-realtime:
+      loadBalancer:
+        servers:
+          - url: http://host.docker.internal:6001
+    coolify-terminal:
+      loadBalancer:
+        servers:
+          - url: http://host.docker.internal:6002
     heimdall:
       loadBalancer:
         servers:

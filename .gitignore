@@ -2,6 +2,17 @@
 */config/
 downloads/
 
+# Runtime state and local service checkouts
+*.log
+logs/
+/heimdall/
+/kompressor/
+/openclaw/
+/uptime-kuma/
+
+# Host-specific certificates (may include private keys)
+/tailscale-certs/
+
 # Environment files with secrets
 .env
 !.env.example

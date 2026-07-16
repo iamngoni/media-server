@@ -223,6 +223,7 @@ Private lane:
 - `media.antonlabs.cc` / `jellyfin.antonlabs.cc` → Jellyfin
 - `requests.antonlabs.cc` / `jellyseerr.antonlabs.cc` → Jellyseerr
 - `dash.antonlabs.cc` / `nexus.antonlabs.cc` → Nexus
+- `deploy.antonlabs.cc` → Coolify dashboard (`/app` routes to Coolify realtime, `/terminal/ws` routes to Coolify terminal websocket)
 - `traefik.antonlabs.cc` → Traefik dashboard
 - `sonarr.antonlabs.cc`, `radarr.antonlabs.cc`, `lidarr.antonlabs.cc`, `bazarr.antonlabs.cc`, `prowlarr.antonlabs.cc`
 - `status.antonlabs.cc` / `uptime.antonlabs.cc` → Uptime Kuma
@@ -237,6 +238,9 @@ Public lane:
   ```
 - Copy `cloudflared/config.example.yml` to the ignored `cloudflared/config.yml` for local use; tunnel credentials remain in ignored `cloudflared/*.json` files.
 - Configure public hostnames such as `heimdall.antonlabs.cc` to target Traefik, then add a matching Traefik router/service for the public app.
+- Do not route `*.antonlabs.cc` through Cloudflare Tunnel; that would publish every Traefik hostname instead of only the public app hostnames.
+- Do not enable Tailscale Serve on port 443 for the Mac mini; private `antonlabs.cc` hostnames need tailnet HTTPS traffic to reach Traefik directly.
+- Coolify runs in the OrbStack `coolify` Linux machine. Its `/data/coolify/source/.env` must set `APP_URL=https://deploy.antonlabs.cc`, `PUSHER_HOST=deploy.antonlabs.cc`, and `PUSHER_PORT=443` so GitHub App webhooks and realtime websockets use the routed domain instead of localhost.
 
 To sync Cloudflare DNS records for the private lane:
 
@@ -244,7 +248,7 @@ To sync Cloudflare DNS records for the private lane:
 ./scripts/sync-cloudflare-antonlabs.sh
 ```
 
-If `CLOUDFLARE_API_TOKEN` is not set, the script will reuse the token from `~/.cloudflared/cert.pem` created by `cloudflared tunnel login`. If `CF_TUNNEL_UUID` is also set, the script will create the public `heimdall.antonlabs.cc` CNAME to the tunnel target. The same cert can be decoded to populate `CLOUDFLARE_DNS_API_TOKEN` in `.env` for Traefik's DNS challenge.
+If `CLOUDFLARE_API_TOKEN` is not set, the script will reuse the token from `~/.cloudflared/cert.pem` created by `cloudflared tunnel login`. The script keeps private media/admin/OpenClaw hostnames as DNS-only records pointing at Tailscale, removes any old wildcard tunnel record, and, if `CF_TUNNEL_UUID` is set, creates the public `heimdall.antonlabs.cc` CNAME to the tunnel target. The same cert can be decoded to populate `CLOUDFLARE_DNS_API_TOKEN` in `.env` for Traefik's DNS challenge.
 
 ## Backup & Migration
 

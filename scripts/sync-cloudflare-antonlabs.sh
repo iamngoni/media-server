@@ -5,17 +5,13 @@ zone_name="${ZONE_NAME:-antonlabs.cc}"
 tailscale_ip="${TAILSCALE_IP:-100.122.121.82}"
 
 private_hosts=(
-)
-
-public_hosts=(
-  '*'
-  heimdall
   media
   jellyfin
   requests
   jellyseerr
   dash
   nexus
+  deploy
   traefik
   sonarr
   radarr
@@ -35,6 +31,14 @@ public_hosts=(
   homeassistant
   flaresolverr
   openclaw
+)
+
+public_hosts=(
+  heimdall
+)
+
+retired_tunnel_hosts=(
+  '*'
 )
 
 require() {
@@ -95,6 +99,18 @@ upsert_record() {
   fi
 }
 
+delete_record() {
+  local name="$1"
+  local fqdn="${name}.${zone_name}"
+  local record_ids
+  record_ids="$(cf_api GET "/zones/${zone_id}/dns_records?name=${fqdn}" | jq -r '.result[].id')"
+  local record_id
+  for record_id in $record_ids; do
+    cf_api DELETE "/zones/${zone_id}/dns_records/${record_id}" >/dev/null
+    echo "deleted ${fqdn}"
+  done
+}
+
 require curl
 require jq
 
@@ -129,6 +145,12 @@ fi
 if ((${#private_hosts[@]})); then
   for host in "${private_hosts[@]}"; do
     upsert_record A "$host" "$tailscale_ip" false
+  done
+fi
+
+if ((${#retired_tunnel_hosts[@]})); then
+  for host in "${retired_tunnel_hosts[@]}"; do
+    delete_record "$host"
   done
 fi
 
