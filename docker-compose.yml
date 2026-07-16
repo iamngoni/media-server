@@ -44,7 +44,7 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared
-    command: tunnel --config /etc/cloudflared/config.yml run antonlabs
+    command: tunnel --config /etc/cloudflared/config.yml run
     profiles:
       - public
     depends_on:

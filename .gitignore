@@ -5,7 +5,9 @@ downloads/
 # Environment files with secrets
 .env
 !.env.example
+cloudflared/config.yml
 cloudflared/*.json
+cloudflared/*.pem
 letsencrypt/
 
 # OS

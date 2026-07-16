@@ -235,7 +235,7 @@ Public lane:
   ```bash
   docker compose --profile public up -d cloudflared
   ```
-- The local tunnel config lives in `cloudflared/config.yml`; secret tunnel credentials are stored as ignored `cloudflared/*.json` files.
+- Copy `cloudflared/config.example.yml` to the ignored `cloudflared/config.yml` for local use; tunnel credentials remain in ignored `cloudflared/*.json` files.
 - Configure public hostnames such as `heimdall.antonlabs.cc` to target Traefik, then add a matching Traefik router/service for the public app.
 
 To sync Cloudflare DNS records for the private lane:
