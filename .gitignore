@@ -1,24 +1,20 @@
-# Config directories (contain secrets/API keys)
-*/config/
-downloads/
-
-# Environment files with secrets
+# Local environment and secrets
 .env
 !.env.example
-cloudflared/config.yml
-cloudflared/*.json
-cloudflared/*.pem
-letsencrypt/
 
-# OS
-.DS_Store
-*.swp
-tdarr/logs/
-tdarr/server/
-tdarr/configs/
-jdownloader/config/
-
+# Application state and libraries
+/data/
+/media/
+/downloads/
+*/config/
 *.db
 
-# Custom/personal services (locally-built images, personal paths)
-docker-compose.custom.yml
+# Local Compose overrides
+/compose.override.yml
+/docker-compose.override.yml
+
+# Logs and operating-system files
+*.log
+/logs/
+.DS_Store
+*.swp

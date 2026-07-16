@@ -1,498 +1,227 @@
+name: ${COMPOSE_PROJECT_NAME:-media-server}
+
+x-common-service: &common-service
+  restart: unless-stopped
+
+x-linuxserver-environment: &linuxserver-environment
+  PUID: ${PUID:-1000}
+  PGID: ${PGID:-1000}
+  TZ: ${TZ:-Etc/UTC}
+
 services:
-  # ── Reverse Proxy ──────────────────────────────────────
-  traefik:
-    image: traefik:v3.6
-    container_name: traefik
-    command:
-      - --api.dashboard=true
-      - --api.insecure=true
-      - --accesslog=true
-      - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
-      - --providers.file.directory=/dynamic
-      - --providers.file.watch=true
-      - --entrypoints.web.address=:80
-      - --entrypoints.web.http.redirections.entrypoint.to=websecure
-      - --entrypoints.web.http.redirections.entrypoint.scheme=https
-      - --entrypoints.websecure.address=:443
-      - --entrypoints.websecure.asdefault=true
-      - --entrypoints.websecure.http.tls.certresolver=cloudflare
-      - --entrypoints.websecure.http.tls.domains[0].main=antonlabs.cc
-      - --entrypoints.websecure.http.tls.domains[0].sans=*.antonlabs.cc
-      - --certificatesresolvers.cloudflare.acme.email=${ACME_EMAIL}
-      - --certificatesresolvers.cloudflare.acme.storage=/letsencrypt/acme.json
-      - --certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare
-      - --certificatesresolvers.cloudflare.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53
-    environment:
-      - CLOUDFLARE_DNS_API_TOKEN=${CLOUDFLARE_DNS_API_TOKEN}
-      - CF_DNS_API_TOKEN=${CLOUDFLARE_DNS_API_TOKEN}
-    ports:
-      - 80:80
-      - 443:443
-      - 8280:8080 # Traefik dashboard
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./letsencrypt:/letsencrypt
-      - ./tailscale-certs:/tailscale-certs:ro
-      - ./traefik/dynamic:/dynamic:ro
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.traefik.rule=Host(`traefik.antonlabs.cc`)
-      - traefik.http.routers.traefik.service=api@internal
-    restart: unless-stopped
-
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: cloudflared
-    command: tunnel --config /etc/cloudflared/config.yml run
-    profiles:
-      - public
-    depends_on:
-      - traefik
-    volumes:
-      - ./cloudflared:/etc/cloudflared:ro
-    restart: unless-stopped
-
-  # ── Media Server ───────────────────────────────────────
   jellyfin:
+    <<: *common-service
     image: lscr.io/linuxserver/jellyfin:latest
-    container_name: jellyfin
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+    environment: *linuxserver-environment
     volumes:
-      - ./jellyfin/config:/config
-      - toshiba_ext:/mnt/media
+      - ${CONFIG_DIR:-./data}/jellyfin:/config
+      - ${MEDIA_DIR:-./media}:/media
+    ports:
+      - "${JELLYFIN_PORT:-8096}:8096"
     ulimits:
       nofile:
         soft: 65536
         hard: 1048576
-    ports:
-      - 8096:8096
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.jellyfin.rule=Host(`media.antonlabs.cc`) || Host(`jellyfin.antonlabs.cc`)
-      - traefik.http.services.jellyfin.loadbalancer.server.port=8096
-    restart: unless-stopped
 
-  jellyseerr:
+  seerr:
+    <<: *common-service
     image: ghcr.io/seerr-team/seerr:latest
-    container_name: jellyseerr
+    init: true
+    user: "${PUID:-1000}:${PGID:-1000}"
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      TZ: ${TZ:-Etc/UTC}
     volumes:
-      - ./jellyseerr/config:/app/config
+      - ${CONFIG_DIR:-./data}/seerr:/app/config
     ports:
-      - 5055:5055
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.jellyseerr.rule=Host(`requests.antonlabs.cc`) || Host(`jellyseerr.antonlabs.cc`)
-      - traefik.http.services.jellyseerr.loadbalancer.server.port=5055
-    restart: unless-stopped
+      - "${SEERR_PORT:-5055}:5055"
+    depends_on:
+      - jellyfin
+      - sonarr
+      - radarr
 
-  # ── Download Stack ─────────────────────────────────────
   qbittorrent:
+    <<: *common-service
     image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    network_mode: host
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - WEBUI_PORT=8080
+      <<: *linuxserver-environment
+      WEBUI_PORT: "8080"
+      TORRENTING_PORT: "6881"
     volumes:
-      - ./qbittorrent/config:/config
-      - ./downloads:/downloads
-    restart: unless-stopped
-
-  metube:
-    image: ghcr.io/alexta69/metube
-    container_name: metube
-    environment:
-      - UID=${PUID}
-      - GID=${PGID}
-    volumes:
-      - type: volume
-        source: toshiba_ext
-        target: /downloads
-        volume:
-          subpath: MeTube
+      - ${CONFIG_DIR:-./data}/qbittorrent:/config
+      - ${DOWNLOADS_DIR:-./downloads}:/downloads
     ports:
-      - 8081:8081
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.metube.rule=Host(`metube.antonlabs.cc`)
-      - traefik.http.services.metube.loadbalancer.server.port=8081
-    restart: unless-stopped
-
-  jdownloader:
-    image: jlesage/jdownloader-2
-    container_name: jdownloader
-    environment:
-      - USER_ID=${PUID}
-      - GROUP_ID=${PGID}
-      - TZ=${TZ}
-    volumes:
-      - ./jdownloader/config:/config
-      - ${DOWNLOADS_DIR}:/output
-    ports:
-      - 5800:5800 # Web UI
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.jdownloader.rule=Host(`jdownloader.antonlabs.cc`)
-      - traefik.http.services.jdownloader.loadbalancer.server.port=5800
-    restart: unless-stopped
+      - "${QBITTORRENT_PORT:-8080}:8080"
+      - "${TORRENT_PORT:-6881}:6881"
+      - "${TORRENT_PORT:-6881}:6881/udp"
 
   prowlarr:
+    <<: *common-service
     image: lscr.io/linuxserver/prowlarr:latest
-    container_name: prowlarr
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+    environment: *linuxserver-environment
     volumes:
-      - ./prowlarr/config:/config
+      - ${CONFIG_DIR:-./data}/prowlarr:/config
     ports:
-      - 9696:9696
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.antonlabs.cc`)
-      - traefik.http.services.prowlarr.loadbalancer.server.port=9696
-    restart: unless-stopped
+      - "${PROWLARR_PORT:-9696}:9696"
 
   flaresolverr:
+    <<: *common-service
     image: ghcr.io/flaresolverr/flaresolverr:latest
-    container_name: flaresolverr
     environment:
-      - TZ=${TZ}
-      - LOG_LEVEL=info
+      TZ: ${TZ:-Etc/UTC}
+      LOG_LEVEL: ${FLARESOLVERR_LOG_LEVEL:-info}
     ports:
-      - 8191:8191
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.flaresolverr.rule=Host(`flaresolverr.antonlabs.cc`)
-      - traefik.http.services.flaresolverr.loadbalancer.server.port=8191
-    restart: unless-stopped
+      - "${FLARESOLVERR_PORT:-8191}:8191"
 
-  # ── Media Management (Arr Stack) ──────────────────────
   sonarr:
+    <<: *common-service
     image: lscr.io/linuxserver/sonarr:latest
-    container_name: sonarr
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+    environment: *linuxserver-environment
     volumes:
-      - ./sonarr/config:/config
-      - ./downloads:/downloads
-      - type: volume
-        source: toshiba_ext
-        target: /tv
-        volume:
-          subpath: Series
-      - type: volume
-        source: toshiba_ext
-        target: /anime
-        volume:
-          subpath: Anime
+      - ${CONFIG_DIR:-./data}/sonarr:/config
+      - ${DOWNLOADS_DIR:-./downloads}:/downloads
+      - ${MEDIA_DIR:-./media}/Series:/tv
+      - ${MEDIA_DIR:-./media}/Anime:/anime
     ports:
-      - 8989:8989
+      - "${SONARR_PORT:-8989}:8989"
     depends_on:
       - qbittorrent
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.sonarr.rule=Host(`sonarr.antonlabs.cc`)
-      - traefik.http.services.sonarr.loadbalancer.server.port=8989
-    restart: unless-stopped
 
   radarr:
+    <<: *common-service
     image: lscr.io/linuxserver/radarr:latest
-    container_name: radarr
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+    environment: *linuxserver-environment
     volumes:
-      - ./radarr/config:/config
-      - ./downloads:/downloads
-      - type: volume
-        source: toshiba_ext
-        target: /movies
-        volume:
-          subpath: Movies
+      - ${CONFIG_DIR:-./data}/radarr:/config
+      - ${DOWNLOADS_DIR:-./downloads}:/downloads
+      - ${MEDIA_DIR:-./media}/Movies:/movies
     ports:
-      - 7878:7878
+      - "${RADARR_PORT:-7878}:7878"
     depends_on:
       - qbittorrent
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.radarr.rule=Host(`radarr.antonlabs.cc`)
-      - traefik.http.services.radarr.loadbalancer.server.port=7878
-    restart: unless-stopped
 
   lidarr:
+    <<: *common-service
     image: lscr.io/linuxserver/lidarr:latest
-    container_name: lidarr
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+    environment: *linuxserver-environment
     volumes:
-      - ./lidarr/config:/config
-      - ./downloads:/downloads
-      - type: volume
-        source: toshiba_ext
-        target: /music
-        volume:
-          subpath: Music
+      - ${CONFIG_DIR:-./data}/lidarr:/config
+      - ${DOWNLOADS_DIR:-./downloads}:/downloads
+      - ${MEDIA_DIR:-./media}/Music:/music
     ports:
-      - 8686:8686
+      - "${LIDARR_PORT:-8686}:8686"
     depends_on:
       - qbittorrent
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.lidarr.rule=Host(`lidarr.antonlabs.cc`)
-      - traefik.http.services.lidarr.loadbalancer.server.port=8686
-    restart: unless-stopped
 
   bazarr:
+    <<: *common-service
     image: lscr.io/linuxserver/bazarr:latest
-    container_name: bazarr
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+    environment: *linuxserver-environment
     volumes:
-      - ./bazarr/config:/config
-      - ./downloads:/downloads
-      - type: volume
-        source: toshiba_ext
-        target: /movies
-        volume:
-          subpath: Movies
-      - type: volume
-        source: toshiba_ext
-        target: /tv
-        volume:
-          subpath: Series
+      - ${CONFIG_DIR:-./data}/bazarr:/config
+      - ${MEDIA_DIR:-./media}/Movies:/movies
+      - ${MEDIA_DIR:-./media}/Series:/tv
     ports:
-      - 6767:6767
+      - "${BAZARR_PORT:-6767}:6767"
     depends_on:
+      - sonarr
       - radarr
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.bazarr.rule=Host(`bazarr.antonlabs.cc`)
-      - traefik.http.services.bazarr.loadbalancer.server.port=6767
-    restart: unless-stopped
 
-  # ── Transcoding ─────────────────────────────────────────
-  recyclarr:
-    image: ghcr.io/recyclarr/recyclarr:latest
-    container_name: recyclarr
+  metube:
+    <<: *common-service
+    image: ghcr.io/alexta69/metube:latest
+    profiles: [extras]
     environment:
-      - TZ=${TZ}
+      UID: ${PUID:-1000}
+      GID: ${PGID:-1000}
     volumes:
-      - ./recyclarr/config:/config
-    restart: unless-stopped
-
-  unpackerr:
-    image: golift/unpackerr:latest
-    container_name: unpackerr
-    environment:
-      - TZ=${TZ}
-      - UN_SONARR_0_URL=http://sonarr:8989
-      - UN_SONARR_0_API_KEY=${UN_SONARR_API_KEY}
-      - UN_RADARR_0_URL=http://radarr:7878
-      - UN_RADARR_0_API_KEY=${UN_RADARR_API_KEY}
-      - UN_LIDARR_0_URL=http://lidarr:8686
-      - UN_LIDARR_0_API_KEY=${UN_LIDARR_API_KEY}
-    volumes:
-      - ./downloads:/downloads
-    restart: unless-stopped
-
-  notifiarr:
-    image: golift/notifiarr:latest
-    container_name: notifiarr
-    environment:
-      - TZ=${TZ}
-      - DN_API_KEY=${NOTIFIARR_API_KEY}
-    volumes:
-      - ./notifiarr/config:/config
-      - /var/run/utmp:/var/run/utmp
+      - ${DOWNLOADS_DIR:-./downloads}/metube:/downloads
     ports:
-      - 5454:5454
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.notifiarr.rule=Host(`notifiarr.antonlabs.cc`)
-      - traefik.http.services.notifiarr.loadbalancer.server.port=5454
-    restart: unless-stopped
+      - "${METUBE_PORT:-8081}:8081"
 
-  watchtower:
-    image: containrrr/watchtower:latest
-    container_name: watchtower
+  jdownloader:
+    <<: *common-service
+    image: jlesage/jdownloader-2:latest
+    profiles: [extras]
     environment:
-      - TZ=${TZ}
-      - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_SCHEDULE=0 0 4 * * *
-      - DOCKER_API_VERSION=1.44
+      USER_ID: ${PUID:-1000}
+      GROUP_ID: ${PGID:-1000}
+      TZ: ${TZ:-Etc/UTC}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    restart: unless-stopped
-
-  # ── Smart Home ─────────────────────────────────────────
-  homeassistant:
-    image: ghcr.io/home-assistant/home-assistant:stable
-    container_name: homeassistant
-    environment:
-      - TZ=${TZ}
-    volumes:
-      - ./homeassistant/config:/config
-    network_mode: host
-    restart: unless-stopped
-
-  # ── Monitoring ─────────────────────────────────────────
-  speedtest-tracker:
-    image: lscr.io/linuxserver/speedtest-tracker:latest
-    container_name: speedtest-tracker
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - APP_KEY=${SPEEDTEST_APP_KEY}
-      - DB_CONNECTION=sqlite
-      - SPEEDTEST_SCHEDULE=0 */3 * * *
-    volumes:
-      - ./speedtest-tracker/config:/config
+      - ${CONFIG_DIR:-./data}/jdownloader:/config
+      - ${DOWNLOADS_DIR:-./downloads}/jdownloader:/output
     ports:
-      - 8765:80
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.speedtest.rule=Host(`speedtest.antonlabs.cc`)
-      - traefik.http.services.speedtest.loadbalancer.server.port=80
-    restart: unless-stopped
+      - "${JDOWNLOADER_PORT:-5800}:5800"
 
   uptime-kuma:
+    <<: *common-service
     image: louislam/uptime-kuma:1
-    container_name: uptime-kuma
+    profiles: [extras]
     volumes:
-      - ./uptime-kuma/data:/app/data
+      - ${CONFIG_DIR:-./data}/uptime-kuma:/app/data
     ports:
-      - 3001:3001
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.uptime-kuma.rule=Host(`status.antonlabs.cc`) || Host(`uptime.antonlabs.cc`)
-      - traefik.http.services.uptime-kuma.loadbalancer.server.port=3001
-    restart: unless-stopped
+      - "${UPTIME_KUMA_PORT:-3001}:3001"
 
-  # ── Transcoding ────────────────────────────────────────
-  kompressor:
-    build: ${KOMPRESSOR_DIR:-../kompressor}
-    image: kompressor:latest
-    container_name: kompressor
-    ports:
-      - 8078:8078
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.kompressor.rule=Host(`kompressor.antonlabs.cc`)
-      - traefik.http.services.kompressor.loadbalancer.server.port=8078
-    volumes:
-      - ${KOMPRESSOR_DATA_DIR:-./kompressor/data}:/app/data
-      - ${KOMPRESSOR_TEMP_DIR:-./kompressor/temp}:/app/temp
-      - type: volume
-        source: toshiba_ext
-        target: /media/Movies
-        volume:
-          subpath: Movies
-      - type: volume
-        source: toshiba_ext
-        target: /media/Series
-        volume:
-          subpath: Series
-      - type: volume
-        source: toshiba_ext
-        target: /media/Anime
-        volume:
-          subpath: Anime
-      - ${KOMPRESSOR_CONFIG:-../kompressor/config.docker.toml}:/app/config.toml:ro
-      - ${KOMPRESSOR_TEMPLATES:-../kompressor/templates}:/app/templates:ro
+  speedtest-tracker:
+    <<: *common-service
+    image: lscr.io/linuxserver/speedtest-tracker:latest
+    profiles: [extras]
     environment:
-      - RUST_LOG=${KOMPRESSOR_LOG_LEVEL:-info}
-    restart: unless-stopped
-
-  # ── Homelab Dashboard ──────────────────────────────────
-  nexus:
-    build: ${NEXUS_DIR:-../nexus}
-    image: nexus:latest
-    container_name: nexus
-    env_file:
-      - path: ${NEXUS_ENV_FILE:-../nexus/.env}
-        required: false
-    environment:
-      - TZ=${TZ}
-      - RUST_LOG=${NEXUS_LOG_LEVEL:-info}
-      - HOST_IP=${NEXUS_HOST_IP:-localhost}
-      - PORT=${NEXUS_PORT:-3000}
-      - WEATHER_LOCATION=${NEXUS_WEATHER_LOCATION:-Sandton}
-      - QBIT_URL=${NEXUS_QBIT_URL:-http://host.docker.internal:8080}
-      - QBIT_PUBLIC_URL=https://qbit.antonlabs.cc
-      - JELLYFIN_URL=http://jellyfin:8096
-      - JELLYFIN_PUBLIC_URL=https://media.antonlabs.cc
-      - SONARR_URL=http://sonarr:8989
-      - SONARR_PUBLIC_URL=https://sonarr.antonlabs.cc
-      - RADARR_URL=http://radarr:7878
-      - RADARR_PUBLIC_URL=https://radarr.antonlabs.cc
-      - LIDARR_URL=http://lidarr:8686
-      - LIDARR_PUBLIC_URL=https://lidarr.antonlabs.cc
-      - BAZARR_URL=http://bazarr:6767
-      - BAZARR_PUBLIC_URL=https://bazarr.antonlabs.cc
-      - PROWLARR_URL=http://prowlarr:9696
-      - PROWLARR_PUBLIC_URL=https://prowlarr.antonlabs.cc
-      - JELLYSEERR_URL=http://jellyseerr:5055
-      - JELLYSEERR_PUBLIC_URL=https://requests.antonlabs.cc
-      - KOMPRESSOR_URL=http://kompressor:8078
-      - KOMPRESSOR_PUBLIC_URL=https://kompressor.antonlabs.cc
-      - METUBE_URL=http://metube:8081
-      - METUBE_PUBLIC_URL=https://metube.antonlabs.cc
-      - JDOWNLOADER_URL=http://jdownloader:5800
-      - JDOWNLOADER_PUBLIC_URL=https://jdownloader.antonlabs.cc
-      - HOME_ASSISTANT_URL=http://host.docker.internal:8123
-      - HOME_ASSISTANT_PUBLIC_URL=https://home.antonlabs.cc
-      - UPTIME_KUMA_URL=http://uptime-kuma:3001
-      - UPTIME_KUMA_PUBLIC_URL=https://status.antonlabs.cc
-      - SPEEDTEST_URL=http://speedtest-tracker:80
-      - SPEEDTEST_PUBLIC_URL=https://speedtest.antonlabs.cc
-      - TRAEFIK_URL=http://traefik:8080
-      - TRAEFIK_PUBLIC_URL=https://traefik.antonlabs.cc
-      - FLARESOLVERR_URL=http://flaresolverr:8191
-      - FLARESOLVERR_PUBLIC_URL=https://flaresolverr.antonlabs.cc
-      - NEXUS_URL=http://nexus:3000/healthz
-      - NEXUS_PUBLIC_URL=https://dash.antonlabs.cc
+      <<: *linuxserver-environment
+      APP_KEY: ${SPEEDTEST_APP_KEY:-}
+      DB_CONNECTION: sqlite
+      SPEEDTEST_SCHEDULE: "${SPEEDTEST_SCHEDULE:-0 */6 * * *}"
     volumes:
-      - type: volume
-        source: toshiba_ext
-        target: /mnt/media
-        read_only: true
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ${OPENCLAW_LOG_DIR:-./openclaw/logs}:/root/.openclaw/logs:ro
+      - ${CONFIG_DIR:-./data}/speedtest-tracker:/config
     ports:
-      - ${NEXUS_PORT:-3000}:${NEXUS_PORT:-3000}
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.nexus.rule=Host(`dash.antonlabs.cc`) || Host(`nexus.antonlabs.cc`)
-      - traefik.http.services.nexus.loadbalancer.server.port=${NEXUS_PORT:-3000}
-    restart: unless-stopped
+      - "${SPEEDTEST_PORT:-8765}:80"
 
-volumes:
-  # Toshiba external drive, attached to OrbStack with:
-  #   orbctl usb attach 00140000
-  # Docker mounts the exFAT partition directly from Linux, avoiding macOS virtiofs.
-  toshiba_ext:
-    name: toshiba_ext
-    driver: local
-    driver_opts:
-      type: exfat
-      device: /dev/sda2
-      o: uid=501,gid=20,umask=000
+  homeassistant:
+    <<: *common-service
+    image: ghcr.io/home-assistant/home-assistant:stable
+    profiles: [extras]
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+    volumes:
+      - ${CONFIG_DIR:-./data}/homeassistant:/config
+    ports:
+      - "${HOME_ASSISTANT_PORT:-8123}:8123"
+
+  unpackerr:
+    <<: *common-service
+    image: golift/unpackerr:latest
+    profiles: [automation]
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+      UN_SONARR_0_URL: http://sonarr:8989
+      UN_SONARR_0_API_KEY: ${UN_SONARR_API_KEY:-}
+      UN_RADARR_0_URL: http://radarr:7878
+      UN_RADARR_0_API_KEY: ${UN_RADARR_API_KEY:-}
+      UN_LIDARR_0_URL: http://lidarr:8686
+      UN_LIDARR_0_API_KEY: ${UN_LIDARR_API_KEY:-}
+    volumes:
+      - ${DOWNLOADS_DIR:-./downloads}:/downloads
+    depends_on:
+      - sonarr
+      - radarr
+      - lidarr
+
+  recyclarr:
+    <<: *common-service
+    image: ghcr.io/recyclarr/recyclarr:latest
+    profiles: [automation]
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+    volumes:
+      - ${CONFIG_DIR:-./data}/recyclarr:/config
+
+  notifiarr:
+    <<: *common-service
+    image: golift/notifiarr:latest
+    profiles: [automation]
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+      DN_API_KEY: ${NOTIFIARR_API_KEY:-}
+    volumes:
+      - ${CONFIG_DIR:-./data}/notifiarr:/config
+    ports:
+      - "${NOTIFIARR_PORT:-5454}:5454"

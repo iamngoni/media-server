@@ -1,13 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-# Jellyfin config backup script — lean version
-# Only backs up databases + config XML/JSON (skips metadata/images/thumbnails)
-# Keeps last 7 daily backups
+# Jellyfin config backup script — lean version.
+# Override JELLYFIN_CONFIG_DIR, BACKUP_DIR, or MAX_BACKUPS when needed.
 
-BACKUP_DIR="/Users/modestnerd/media-server/backups/jellyfin"
-CONFIG_DIR="/Users/modestnerd/media-server/jellyfin/config"
-MAX_BACKUPS=7
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BACKUP_DIR="${BACKUP_DIR:-${ROOT_DIR}/backups/jellyfin}"
+CONFIG_DIR="${JELLYFIN_CONFIG_DIR:-${ROOT_DIR}/data/jellyfin}"
+MAX_BACKUPS="${MAX_BACKUPS:-7}"
 
 mkdir -p "$BACKUP_DIR"
 
